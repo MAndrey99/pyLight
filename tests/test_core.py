@@ -82,7 +82,6 @@ def test_del_spaces():
 
 
 def test_optimize_str_count():
-    # TODO: чтобы не трогала многострочные комментарии
     cases = [
         ([" a", "b", "   c"], [" a", "b", "   c"]),
         (["a", " b", " c"], ["a", " b;c"]),
@@ -101,4 +100,20 @@ def test_optimize_str_count():
 
     for i, j in cases:
         core.optimize_str_count(i)
+        assert i == j
+
+
+def test_update_multiline_strings():
+    cases = [
+        (["a = '''", "b", "c '''"], [r"a = '\n'+'''b'''+'\n'+'''c '''"]),
+        ([" x x x ", r't = \'"""\'', "yur", '"""'], [" x x x ", r't = \'"""\'', "yur", '"""']),
+
+        (
+            [" x ", ' p = """', "r e d_ ", 'rt"""', ' x'],
+            [" x ", r' p = ' + "'\\n'+" + '"""r e d_ """+' + "'\\n'+" + '"""rt"""', ' x']
+        )
+    ]
+
+    for i, j in cases:
+        core.update_multiline_strings(i)
         assert i == j

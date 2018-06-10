@@ -26,7 +26,10 @@ def process(data: str) -> str:
     # получили не пустые строки без однострочных комментариев и комментариев в концах строк
     data = core.super_split(data)
 
-    # соеденяем строки
+    # многострочные строки в одну линию
+    core.update_multiline_strings(data)
+
+    # соеденяем строки если это возможно
     core.optimize_str_count(data)
 
     # удаляем пробелы между операторами
@@ -37,7 +40,7 @@ def process(data: str) -> str:
 
 def process_path(p: Path):
     if p.is_file():
-        p.write_text(process(p.read_text(encoding="utf8")))
+        p.write_text(process(p.read_text(encoding="utf8")), encoding="utf8")
     else:
         def for_each_in_dir(dir: Path):
             for it in dir.iterdir():
@@ -45,7 +48,7 @@ def process_path(p: Path):
                     for_each_in_dir(it)
                 elif it.is_file() and it.suffix in ('.py', '.pyw'):
                     print("обработка", it.name)
-                    it.write_text(process(it.read_text(encoding="utf8")))
+                    it.write_text(process(it.read_text(encoding="utf8")), encoding="utf8")
 
         for_each_in_dir(p)
 

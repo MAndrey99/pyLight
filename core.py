@@ -41,6 +41,7 @@ def super_split(data: str) -> List[str]:
                     if data[i][j] == k:
                         if j + 2 < len(data[i]) and (data[i][j + 1] == data[i][j + 2] == k):
                             s = k * 3
+                            j += 2
                         else:
                             s = k
                         break
@@ -75,6 +76,43 @@ def del_spaces(data: List[str]):
             if (t[j - 1][-1].isalnum() or t[j - 1][-1] == '_') and (t[j][0].isalnum() or t[j][0] == '_'):
                 data[i] += ' '
             data[i] += t[j]
+
+
+# многострочные строки соединяет в одну линию с помощьюдобавления '\n'
+def update_multiline_strings(data: List[str]):
+    s: str = None  # симвал[ы] начала комментария (храним тк они же его и закончат)
+    i = 0  # номер строки на которой мы находимся
+    t = 0  # содержит либо 0 либо ту позицию, на которой мы остановились если была добавлена строка в конец передыдущей
+    while i < len(data):
+        j = t  # номер симвала? который мы рассматриваем
+        while j < len(data[i]):
+            if s:
+                if data[i][j:].find(s) == 0:
+                    if len(s) == 3: j += 2
+                    s = None
+            else:
+                for k in ('"', "'"):
+                    if data[i][j] == k:
+                        if j + 2 < len(data[i]) and (data[i][j + 1] == data[i][j + 2] == k):
+                            s = k * 3
+                            j += 2
+                        else:
+                            s = k
+                        break
+
+            j += 1
+
+        if s and len(s) == 3 and i + 1 < len(data):
+            if data[i].rstrip()[-3:] == s:
+                t = len(data[i]) + 5
+                data[i] = data[i][:-3] + r"'\n'+" + s + data[i + 1]
+            else:
+                t = len(data[i]) + 12
+                data[i] += s + r"+'\n'+" + s + data[i + 1]
+            del data[i + 1]
+        else:
+            i += 1
+            t = 0
 
 
 # обьединяет строки если это возможно
