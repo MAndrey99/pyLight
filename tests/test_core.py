@@ -60,7 +60,8 @@ def test_super_split():
     cases = [
         ("a\nb \n\tc\n", ['a', 'b', ' c']),
         ("\n\n\n\t\ta,b\\\n\n\n", ['  a,b\\']),
-        (r'a"\n"b', [r'a"\n"b'])
+        (r'a"\n"b', [r'a"\n"b']),
+        (" xaxaxa = '#' # FFF", [" xaxaxa = '#'"])
     ]
 
     for i, j in cases:
@@ -81,13 +82,16 @@ def test_del_spaces():
 
 
 def test_optimize_str_count():
+    # TODO: чтобы не трогала многострочные комментарии
     cases = [
         ([" a", "b", "   c"], [" a", "b", "   c"]),
         (["a", " b", " c"], ["a", " b;c"]),
-        (["for i:", "a"], ["for i:", "a"]),
+        ([" for i:", "   a"], [" for i:a"]),
+        (["class i:", " a", " b"], ["class i:", " a;b"]),
         (["a", "class B"], ["a", "class B"]),
         (["  a\\", "      b!"], ["  a b!"]),
         (["D = {'b': '\\<bs>',", "     's': ' '}"], ["D = {'b': '\\<bs>', 's': ' '}"]),
+        (["for i in a:", "  r(a)", "  p(i)", "kek"], ["for i in a:", "  r(a);p(i)", "kek"]),
 
         (
             ["from sys import argv", "from logging import ERROR, INFO", "LOCATION = Path(argv[0]).parent"],

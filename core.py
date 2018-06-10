@@ -28,9 +28,31 @@ def super_split(data: str) -> List[str]:
     data = [i.replace('\t', ' ').rstrip() for i in data.split('\n') if i and not reg.match(i)]
 
     # удаляем комментарии в конце
+    s: str = None
     for i in range(len(data)):
-        n = data[i].find('#')
-        if n != -1: data[i] = data[i][:n].rstrip()
+        j = 0
+        while j < len(data[i]):
+            if s:
+                if data[i][j:].find(s) == 0:
+                    if len(s) == 3: j += 2
+                    s = None
+            else:
+                for k in ('"', "'"):
+                    if data[i][j] == k:
+                        if j + 2 < len(data[i]) and (data[i][j + 1] == data[i][j + 2] == k):
+                            s = k * 3
+                        else:
+                            s = k
+                        break
+
+                if not s:
+                    if data[i][j] == '#':
+                        data[i] = data[i][:j].rstrip()
+                        break
+
+            j += 1
+
+        s = None
 
     return data
 
@@ -57,19 +79,28 @@ def del_spaces(data: List[str]):
 
 # обьединяет строки если это возможно
 def optimize_str_count(data: List[str]):
-    def joinable(a: str, b: str) -> bool:
-        # проверка на разные уровни
-        i = 0
-        while a[i] == b[i] == ' ': i += 1
-        if a[i] == ' ' or b[i] == ' ': return False
+    def joinable(a: str, b: str, c: str) -> int:
+        # считаем их уровни уровни
+        levels = [0, 0, 0]
+        for n, it in enumerate((a, b, c)):
+            if it:
+                while it[levels[n]] == ' ': levels[n] += 1
 
         # проверка на наличае ключевых слов
-        keywords = ("class", "lambda", "def", "for", "while", "if", "else", "try", "except", "finally", '@')
+        keywords = ("class", "def", "for", "while", "if", "else", "try", "except", "finally", '@')
+        a_spec = False
         for i in keywords:
-            if a.find(i) != -1 or b.find(i) != -1:
-                return False
+            if b.lstrip().find(i) == 0:
+                return 0
+            elif a.lstrip().find(i) == 0:
+                a_spec = True
 
-        return True
+        if not a_spec:
+            return 1 if levels[0] == levels[1] else 0
+        elif levels[2] < levels[1] and levels[0] < levels[1] and a.rstrip()[-1] == ':':
+            return 2
+        else:
+            return 0
 
     i = 1
     while i < len(data):
@@ -79,8 +110,10 @@ def optimize_str_count(data: List[str]):
         elif data[i - 1][-1] == ',':
             data[i - 1] = data[i - 1] + ' ' + data[i].lstrip()
             del data[i]
-        elif joinable(data[i - 1], data[i]):
-            data[i - 1] += ';' + data[i].lstrip()
-            del data[i]
         else:
-            i += 1
+            t = joinable(data[i - 1], data[i], data[i + 1] if i + 1 < len(data) else '')
+            if t != 0:
+                data[i - 1] += (';' if t == 1 else '') + data[i].lstrip()
+                del data[i]
+            else:
+                i += 1
