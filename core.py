@@ -60,25 +60,81 @@ def super_split(data: str) -> List[str]:
 
 # удаляем пробелы между операторами
 def del_spaces(data: List[str]):
+    def generate_mask(arg: str) -> List[bool]:
+        """
+        :param arg: строка для генерации маски
+        :return: список, где True соответствует элементам не в комментарии
+        """
+
+        res = [False for _ in range(len(arg))]
+        i = 0
+        s = None  # строка из симвала(ов), открывающих строку
+        while i < len(arg):
+            if s:
+                if arg[i: i + 3].find(s) == 0:
+                    i += len(s)
+                    s = None
+                    continue
+            elif arg[i] in ('"', "'"):
+                s = arg[i]
+
+                if i + 2 < len(arg) and arg[i] == arg[i + 1] == arg[i + 2]:
+                    i += 3
+                    s *= 3
+                else:
+                    i += 1
+
+                continue
+
+            if s:
+                res[i] = True
+
+            i += 1
+
+        return res
+
+    def process(s: str) -> str:
+        """
+        Удаляет лишние пробелы из строки.
+        :param s: строка, в которой надо удалить лишние пробелы
+        :return: строка без пробелов
+        """
+
+        blocks = [i for i in s.split(' ') if i]
+        res = blocks[0]
+
+        for i in range(1, len(blocks)):
+            if (blocks[i - 1][-1].isalnum() or blocks[i - 1][-1] == '_') and (blocks[i][0].isalnum() or blocks[i][0] == '_'):
+                res += ' '
+            res += blocks[i]
+
+        return res
+
     for i in range(len(data)):
+        assert data[i]
+
         # ищем уровень записи
         level = 0
         while data[i][level] == ' ': level += 1
         data[i] = data[i][level:]
 
-        # удаляем повторные пробелы
-        while '  ' in data[i]: data[i] = data[i].replace('  ', ' ')
+        # разбиваем на фрагменты и удаляем пробелы вне строк
+        mask = generate_mask(data[i])
+        blocks = []
+        last_block_end = 0
+        j = 0
+        while j < len(mask):
+            j += 1
+            while j < len(mask) and mask[j - 1] == mask[j]: j += 1
+            blocks.append(data[i][last_block_end: j])
+            if not mask[j - 1]: blocks[-1] = process(blocks[-1])
+            last_block_end = j
 
-        # удаляем пробелы
-        t = [i for i in data[i].split(' ') if i]
-        data[i] = ' ' * level + t[0]
-        for j in range(1, len(t)):
-            if (t[j - 1][-1].isalnum() or t[j - 1][-1] == '_') and (t[j][0].isalnum() or t[j][0] == '_'):
-                data[i] += ' '
-            data[i] += t[j]
+        # получаем результат
+        data[i] = ' ' * level + ''.join(blocks)
 
 
-# многострочные строки соединяет в одну линию с помощьюдобавления '\n'
+# многострочные строки соединяет в одну линию с помощью добавления '\n'
 def update_multiline_strings(data: List[str]):
     s: str = None  # симвал[ы] начала комментария (храним тк они же его и закончат)
     i = 0  # номер строки на которой мы находимся
