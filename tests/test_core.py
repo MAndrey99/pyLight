@@ -62,6 +62,8 @@ def test_super_split():
     cases = [
         ("a\nb \n\tc\n", ['a', 'b', ' c']),
         ("\n\t\t\n\n\t\ta,b\\\n\n\n", ['  a,b\\']),
+        ("''' # heh'''\nr\"\"\" # heh\"\"\"", ["''' # heh'''", 'r""" # heh"""']),
+        ("'# \\'#\\' #'", ["'# \\'#\\' #'"]),
         (r'a"\n"b', [r'a"\n"b']),
         (" xaxaxa = '#' # FFF", [" xaxaxa = '#'"]),
         ("\n  \nxaxaxa    # comment", ["xaxaxa"])
@@ -99,7 +101,7 @@ def test_optimize_str_count():
         (["  a\\", "      b!"], ["  a b!"]),
         (["D = {'b': '\\<bs>',", "     's': ' '}"], ["D = {'b': '\\<bs>', 's': ' '}"]),
         (["for i in a:", "  r(a)", "  p(i)", "kek"], ["for i in a:", "  r(a);p(i)", "kek"]),
-        (["a = [", "   a,", "   b]"], ["a = [a, b]"]),
+        (["a = [", "   a,", "   b", "  ]"], ["a = [a, b]"]),
         (
             ["for c in (b' !',", "b'?@',", "b'\t'):", "  _[c] = chr(c)"],
             ["for c in (b' !', b'?@', b'\t'):_[c] = chr(c)"]

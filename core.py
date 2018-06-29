@@ -32,24 +32,25 @@ def super_split(data: str) -> List[str]:
     for i in range(len(data)):
         j = 0
         while j < len(data[i]):
-            if s:
-                if data[i][j:].find(s) == 0:
-                    if len(s) == 3: j += 2
-                    s = None
-            else:
-                for k in ('"', "'"):
-                    if data[i][j] == k:
-                        if j + 2 < len(data[i]) and (data[i][j + 1] == data[i][j + 2] == k):
-                            s = k * 3
-                            j += 2
-                        else:
-                            s = k
-                        break
+            if j == 0 or data[i][j - 1] != '\\':
+                if s:
+                    if data[i][j:].startswith(s):
+                        if len(s) == 3: j += 2
+                        s = None
+                else:
+                    for k in ('"', "'"):
+                        if data[i][j] == k:
+                            if j + 2 < len(data[i]) and (data[i][j + 1] == data[i][j + 2] == k):
+                                s = k * 3
+                                j += 2
+                            else:
+                                s = k
+                            break
 
-                if not s:
-                    if data[i][j] == '#':
-                        data[i] = data[i][:j].rstrip()
-                        break
+            if not s:
+                if data[i][j] == '#':
+                    data[i] = data[i][:j].rstrip()
+                    break
 
             j += 1
 
@@ -71,7 +72,7 @@ def del_spaces(data: List[str]):
         s = None  # строка из симвала(ов), открывающих строку
         while i < len(arg):
             if s:
-                if arg[i: i + 3].find(s) == 0:
+                if arg[i: i + 3].startswith(s):
                     i += len(s)
                     s = None
                     continue
@@ -143,7 +144,7 @@ def update_multiline_strings(data: List[str]):
         j = t  # номер симвала? который мы рассматриваем
         while j < len(data[i]):
             if s:
-                if data[i][j:].find(s) == 0:
+                if data[i][j:].startswith(s):
                     if len(s) == 3: j += 2
                     s = None
             else:
@@ -183,6 +184,7 @@ def optimize_str_count(data: List[str]):
 
         # проверка на вхождение в литералы коллекций и прочую фигню(например параметры функций)
         if a[-1] in "({[,": return 3
+        if b and b.lstrip()[0] in ")]}": return 3
 
         # проверка на логические вырожения
         if len(a) >= 2:
@@ -199,9 +201,9 @@ def optimize_str_count(data: List[str]):
         keywords = ("class", "def", "for", "while", "if", "else", "try", "except", "finally", '@')
         a_spec = False
         for i in keywords:
-            if b.lstrip().find(i) == 0:
+            if b.lstrip().startswith(i):
                 return 0
-            elif a.lstrip().find(i) == 0:
+            elif a.lstrip().startswith(i):
                 a_spec = True
 
         if not a_spec:
