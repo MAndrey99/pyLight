@@ -6,14 +6,14 @@ from typing import List
 def del_multiline_comments(data: str) -> str:
     for i in ('"""', "'''"):
         # удаляем с самого начала
-        reg = re.compile(r"\s*" + i + r"(?:(?!" + i + r").|\n)*?" + i)
+        reg = re.compile(r"\s*r?" + i + r"(?:(?!" + i + r").|\n)*?" + i)
         m = reg.match(data)
         while m:
             data = data[m.end() + 1:]
             m = reg.match(data)
 
         # удаляем в остальных местах
-        reg = re.compile(r"(?<!\\)\n\s*" + i + r"(?:(?!" + i + ").|\n)*?" + i)
+        reg = re.compile(r"(?<!\\)\n\s*r?" + i + r"(?:(?!" + i + ").|\n)*?" + i)
         m = reg.search(data)
         while m:
             data = data[:m.start()] + data[m.end():]
@@ -55,7 +55,7 @@ def super_split(data: str) -> List[str]:
 
         s = None
 
-    return data
+    return [i for i in data if i and not i.isspace()]
 
 
 # удаляем пробелы между операторами
@@ -174,6 +174,21 @@ def update_multiline_strings(data: List[str]):
 # обьединяет строки если это возможно
 def optimize_str_count(data: List[str]):
     def joinable(a: str, b: str, c: str) -> int:
+        """
+        :param a: трока к которой мы хотим потсоединить b
+        :param b: подсоединяемая строка
+        :param c: строка после подсоединяемой для понимания контекста
+        :return: 0 если соединить нельзя. 1 если можно соединить через ';'. 2 если можно соединить через пробел. 3 если можно просто соединить без всего.
+        """
+
+        # проверка на вхождение в литералы коллекций и прочую фигню(например параметры функций)
+        if a[-1] in "({[,": return 3
+
+        # проверка на логические вырожения
+        if len(a) >= 2:
+            if a[-2:] == "or" or (len(a) >= 3 and a[-3:] == "and"):
+                return 2
+
         # считаем их уровни уровни
         levels = [0, 0, 0]
         for n, it in enumerate((a, b, c)):
@@ -190,14 +205,15 @@ def optimize_str_count(data: List[str]):
                 a_spec = True
 
         if not a_spec:
-            return 1 if levels[0] == levels[1] else 0
+            return int(levels[0] == levels[1])
         elif levels[2] < levels[1] and levels[0] < levels[1] and a.rstrip()[-1] == ':':
-            return 2
+            return 3
         else:
             return 0
 
     i = 1
     while i < len(data):
+        assert data[i]
         if data[i - 1][-1] == '\\':
             data[i - 1] = data[i - 1][:-1] + ' ' + data[i].lstrip()
             del data[i]
@@ -207,7 +223,7 @@ def optimize_str_count(data: List[str]):
         else:
             t = joinable(data[i - 1], data[i], data[i + 1] if i + 1 < len(data) else '')
             if t != 0:
-                data[i - 1] += (';' if t == 1 else '') + data[i].lstrip()
+                data[i - 1] += (';' if t == 1 else (' ' if t == 2 else '')) + data[i].lstrip()
                 del data[i]
             else:
                 i += 1

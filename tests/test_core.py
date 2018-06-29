@@ -12,7 +12,9 @@ def test_del_multiline_comments():
     cases = [
         ("'''fgyuik/\\ed'''\na", 'a'),
         ("sdfr\n'''sdfr7890(*&/* ss\t({'''", "sdfr"),
-        ("ss\\n'''s'''", "ss\\n'''s'''")
+        ("ss\\n'''s'''", "ss\\n'''s'''"),
+        ("r'''ooo ye'''\nxaxa\nr'''xxx'''\n", "xaxa\n"),
+        ('r"""oooo o"""\ntext:\n\n  r"""t\n\n"""\n  a = 5', "text:\n  a = 5")
     ]
 
     for i, j in cases:
@@ -59,9 +61,10 @@ def test_del_multiline_comments():
 def test_super_split():
     cases = [
         ("a\nb \n\tc\n", ['a', 'b', ' c']),
-        ("\n\n\n\t\ta,b\\\n\n\n", ['  a,b\\']),
+        ("\n\t\t\n\n\t\ta,b\\\n\n\n", ['  a,b\\']),
         (r'a"\n"b', [r'a"\n"b']),
-        (" xaxaxa = '#' # FFF", [" xaxaxa = '#'"])
+        (" xaxaxa = '#' # FFF", [" xaxaxa = '#'"]),
+        ("\n  \nxaxaxa    # comment", ["xaxaxa"])
     ]
 
     for i, j in cases:
@@ -96,10 +99,18 @@ def test_optimize_str_count():
         (["  a\\", "      b!"], ["  a b!"]),
         (["D = {'b': '\\<bs>',", "     's': ' '}"], ["D = {'b': '\\<bs>', 's': ' '}"]),
         (["for i in a:", "  r(a)", "  p(i)", "kek"], ["for i in a:", "  r(a);p(i)", "kek"]),
-
+        (["a = [", "   a,", "   b]"], ["a = [a, b]"]),
+        (
+            ["for c in (b' !',", "b'?@',", "b'\t'):", "  _[c] = chr(c)"],
+            ["for c in (b' !', b'?@', b'\t'):_[c] = chr(c)"]
+        ),
         (
             ["from sys import argv", "from logging import ERROR, INFO", "LOCATION = Path(argv[0]).parent"],
             ["from sys import argv;from logging import ERROR, INFO;LOCATION = Path(argv[0]).parent"]
+        ),
+        (
+            ["if (e == 'dot' or", "e=='cfws' and", "e=='dot'):", "  append(Defect(", "'\na += b\nc\n'))"],
+            ["if (e == 'dot' or e=='cfws' and e=='dot'):append(Defect('\na += b\nc\n'))"]
         )
     ]
 
