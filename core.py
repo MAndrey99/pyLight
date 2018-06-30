@@ -32,7 +32,10 @@ def super_split(data: str) -> List[str]:
     for i in range(len(data)):
         j = 0
         while j < len(data[i]):
-            if j == 0 or data[i][j - 1] != '\\':
+            k = 0  # количество знаков r'\' перед симвалом
+            while j - k > 0 and data[i][j - k - 1] == '\\': k += 1
+
+            if j == 0 or k % 2 == 0:
                 if s:
                     if data[i][j:].startswith(s):
                         if len(s) == 3: j += 2
@@ -54,7 +57,7 @@ def super_split(data: str) -> List[str]:
 
             j += 1
 
-        s = None
+        assert not s
 
     return [i for i in data if i and not i.isspace()]
 
@@ -141,21 +144,25 @@ def update_multiline_strings(data: List[str]):
     i = 0  # номер строки на которой мы находимся
     t = 0  # содержит либо 0 либо ту позицию, на которой мы остановились если была добавлена строка в конец передыдущей
     while i < len(data):
-        j = t  # номер симвала? который мы рассматриваем
+        j = t  # номер симвала, который мы рассматриваем
         while j < len(data[i]):
-            if s:
-                if data[i][j:].startswith(s):
-                    if len(s) == 3: j += 2
-                    s = None
-            else:
-                for k in ('"', "'"):
-                    if data[i][j] == k:
-                        if j + 2 < len(data[i]) and (data[i][j + 1] == data[i][j + 2] == k):
-                            s = k * 3
-                            j += 2
-                        else:
-                            s = k
-                        break
+            k = 0  # количество знаков r'\' перед симвалом
+            while j - k > 0 and data[i][j - k - 1] == '\\': k += 1
+
+            if j == 0 or k % 2 == 0:
+                if s:
+                    if data[i][j:].startswith(s):
+                        if len(s) == 3: j += 2
+                        s = None
+                else:
+                    for k in ('"', "'"):
+                        if data[i][j] == k:
+                            if j + 2 < len(data[i]) and (data[i][j + 1] == data[i][j + 2] == k):
+                                s = k * 3
+                                j += 2
+                            else:
+                                s = k
+                            break
 
             j += 1
 
@@ -168,6 +175,7 @@ def update_multiline_strings(data: List[str]):
                 data[i] += s + r"+'\n'+" + s + data[i + 1]
             del data[i + 1]
         else:
+            assert not s
             i += 1
             t = 0
 
