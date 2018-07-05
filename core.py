@@ -9,7 +9,7 @@ def super_split(data: str) -> List[str]:
     i = 0
     while i < len(data):
         mask, s = _generate_mask(data[i], 'last')
-        assert len(mask) == len(data[i])
+        data[i] = data[i][:len(mask)].rstrip()  # чтобы убрать комментарии в конце строки
 
         if not s:
             t = data[i].lstrip()
@@ -19,11 +19,6 @@ def super_split(data: str) -> List[str]:
                     if t[:3] == t[-3:] and len(t) > 5:
                         del data[i]
                         continue
-
-            for n, within in enumerate(mask):
-                if not within and data[i][n] == "#":
-                    data[i] = data[i][:n].rstrip()
-                    break
 
             if not data[i] or data[i].isspace():
                 del data[i]
@@ -200,6 +195,9 @@ def _generate_mask(arg: str, s: str=None) -> Tuple[List[bool], str]:
                 i += 1
 
             continue
+        elif arg[i] == '#':
+            res = res[:i]
+            break
 
         if s:
             res[i] = True

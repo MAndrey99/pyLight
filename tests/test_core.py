@@ -44,7 +44,8 @@ def test_super_split():
         ("r'''ooo ye'''\nxaxa\nr'''xxx'''\n", ["xaxa"]),
         ('if a or\\\n    b == 0: ...', ['if a or    b == 0: ...']),
         ('r"""oooo o"""\ntext:\n\n  r"""t\n\n"""\n  a = 5', ["text:", "  a = 5"]),
-        ('a = """\nxe\n"""\nb = """\n"""', ['a = """', 'xe', '"""', 'b = """', '"""'])
+        ('a = """\nxe\n"""\nb = """\n"""', ['a = """', 'xe', '"""', 'b = """', '"""']),
+        ('a # ee"\n\n\n', ['a'])
     ]
 
     for i, j in cases:
@@ -135,7 +136,7 @@ def test_update_multiline_strings():
 def test_generate_mask():
     # проверяем саму маску
     cases = [
-        ("h e l l o", to_bool_array('0'*9)),
+        ("h e l l o# 'rrr", to_bool_array('0'*9)),
         ("a = b'yt \" w\"' + 's'", to_bool_array('(0*6)(1*7)(0*5)10')),
         ("r''' \\'\\'\\' end'''", to_bool_array('000011111111111000'))
     ]
