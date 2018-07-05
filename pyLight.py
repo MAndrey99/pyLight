@@ -1,6 +1,7 @@
 from pathlib import Path
 from os import system
 from sys import platform, argv
+from time import time
 import core
 
 HEAD = r"""
@@ -18,7 +19,7 @@ VERSION = r"""
 __ _/ | /  \
 \ V / || () |
  \_/|_(_)__/
- """
+"""
 
 HELP = """
 ключевые параметры:  
@@ -36,10 +37,7 @@ nonewdir = False
 
 
 def process(data: str) -> str:
-    # убираем многострочные комментарии
-    data = core.del_multiline_comments(data)
-
-    # получили не пустые строки без однострочных комментариев и комментариев в концах строк
+    # получили не пустые строки без комментариев
     data = core.super_split(data)
 
     # многострочные строки в одну линию
@@ -57,6 +55,8 @@ def process(data: str) -> str:
 def process_path(p: Path):
     result_dir = None if nonewdir else Path(p / "Light")
     if result_dir and not result_dir.is_dir(): result_dir.mkdir()  # создаём папку для результата
+
+    t = time()  # сохраняем время начала процедуры для подсчёта быстродействия
 
     if p.is_file():
         (result_dir / p.name if result_dir else p).write_text(process(p.read_text(encoding="utf8")), encoding="utf8")
@@ -76,6 +76,8 @@ def process_path(p: Path):
                     (result_dir / it.name if result_dir else it).write_text(process(it.read_text(encoding="utf8")), encoding="utf8")
 
         for_each_in_dir(p, result_dir)
+
+    print(round((time() - t) * 1000), 'ms')
 
 
 def menu():
@@ -102,7 +104,7 @@ def menu():
             elif text == 3:
                 nonewdir = not nonewdir
 
-            system("cls" if platform == 'win32' else 'clear')
+            system('cls' if platform == 'win32' else 'clear')
             menu()
             return
 
@@ -164,6 +166,7 @@ def main():
     for i in targets:
         assert (i.is_file() and i.suffix in ('.py', '.pyw')) or i.is_dir()
         process_path(i)
+        print('_'*10, '\n\n')
 
 
 if __name__ == "__main__":

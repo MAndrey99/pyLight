@@ -1,102 +1,53 @@
-import re
-from typing import List
-
-
-# убираем многострочные комментарии
-def del_multiline_comments(data: str) -> str:
-    for i in ('"""', "'''"):
-        # удаляем с самого начала
-        reg = re.compile(r"\s*r?" + i + r"(?:(?!" + i + r").|\n)*?" + i)
-        m = reg.match(data)
-        while m:
-            data = data[m.end() + 1:]
-            m = reg.match(data)
-
-        # удаляем в остальных местах
-        reg = re.compile(r"(?<!\\)\n\s*r?" + i + r"(?:(?!" + i + ").|\n)*?" + i)
-        m = reg.search(data)
-        while m:
-            data = data[:m.start()] + data[m.end():]
-            m = reg.search(data)
-
-    return data
+from typing import List, Tuple
 
 
 # разбивает файл на строки с кодом без комментариев в конце и превращает табуляцию в пробелы
 def super_split(data: str) -> List[str]:
-    reg = re.compile(r"^\s*#.*")  # вся строка-комментарий
-    data = [i.replace('\t', ' ').rstrip() for i in data.split('\n') if i and not reg.match(i)]
+    data = [i.rstrip().replace('\t', ' ') for i in data.replace('\\\n', '').split('\n')]
 
-    # удаляем комментарии в конце
-    s: str = None
-    for i in range(len(data)):
-        j = 0
-        while j < len(data[i]):
-            k = 0  # количество знаков r'\' перед симвалом
-            while j - k > 0 and data[i][j - k - 1] == '\\': k += 1
+    # удаляем комментарии
+    i = 0
+    while i < len(data):
+        mask, s = _generate_mask(data[i], 'last')
+        assert len(mask) == len(data[i])
 
-            if j == 0 or k % 2 == 0:
-                if s:
-                    if data[i][j:].startswith(s):
-                        if len(s) == 3: j += 2
-                        s = None
-                else:
-                    for k in ('"', "'"):
-                        if data[i][j] == k:
-                            if j + 2 < len(data[i]) and (data[i][j + 1] == data[i][j + 2] == k):
-                                s = k * 3
-                                j += 2
-                            else:
-                                s = k
-                            break
+        if not s:
+            t = data[i].lstrip()
+            if t:
+                if t[0] == 'r': t = t[1:]
+                if t[:3] in ('"""', "'''"):
+                    if t[:3] == t[-3:] and len(t) > 5:
+                        del data[i]
+                        continue
 
-            if not s:
-                if data[i][j] == '#':
-                    data[i] = data[i][:j].rstrip()
+            for n, within in enumerate(mask):
+                if not within and data[i][n] == "#":
+                    data[i] = data[i][:n].rstrip()
                     break
 
-            j += 1
+            if not data[i] or data[i].isspace():
+                del data[i]
+                continue
+        elif data[i].lstrip().startswith(s) or data[i].lstrip().startswith('r' + s):
+            # найдено начало многострочного комментария
+            while i + 1 < len(data):
+                _, t = _generate_mask(data[i + 1], 'last')
+                del data[i + 1]
 
-        assert not s
+                if not t:
+                    del data[i]
+                    break
 
-    return [i for i in data if i and not i.isspace()]
+            continue
+
+        i += 1
+
+    _generate_mask.LAST_S = None
+    return data
 
 
 # удаляем пробелы между операторами
 def del_spaces(data: List[str]):
-    def generate_mask(arg: str) -> List[bool]:
-        """
-        :param arg: строка для генерации маски
-        :return: список, где True соответствует элементам не в комментарии
-        """
-
-        res = [False for _ in range(len(arg))]
-        i = 0
-        s = None  # строка из симвала(ов), открывающих строку
-        while i < len(arg):
-            if s:
-                if arg[i: i + 3].startswith(s):
-                    i += len(s)
-                    s = None
-                    continue
-            elif arg[i] in ('"', "'"):
-                s = arg[i]
-
-                if i + 2 < len(arg) and arg[i] == arg[i + 1] == arg[i + 2]:
-                    i += 3
-                    s *= 3
-                else:
-                    i += 1
-
-                continue
-
-            if s:
-                res[i] = True
-
-            i += 1
-
-        return res
-
     def process(s: str) -> str:
         """
         Удаляет лишние пробелы из строки.
@@ -123,7 +74,7 @@ def del_spaces(data: List[str]):
         data[i] = data[i][level:]
 
         # разбиваем на фрагменты и удаляем пробелы вне строк
-        mask = generate_mask(data[i])
+        mask, _ = _generate_mask(data[i])
         blocks = []
         last_block_end = 0
         j = 0
@@ -140,44 +91,22 @@ def del_spaces(data: List[str]):
 
 # многострочные строки соединяет в одну линию с помощью добавления '\n'
 def update_multiline_strings(data: List[str]):
-    s: str = None  # симвал[ы] начала комментария (храним тк они же его и закончат)
     i = 0  # номер строки на которой мы находимся
-    t = 0  # содержит либо 0 либо ту позицию, на которой мы остановились если была добавлена строка в конец передыдущей
     while i < len(data):
-        j = t  # номер симвала, который мы рассматриваем
-        while j < len(data[i]):
-            k = 0  # количество знаков r'\' перед симвалом
-            while j - k > 0 and data[i][j - k - 1] == '\\': k += 1
-
-            if j == 0 or k % 2 == 0:
-                if s:
-                    if data[i][j:].startswith(s):
-                        if len(s) == 3: j += 2
-                        s = None
-                else:
-                    for k in ('"', "'"):
-                        if data[i][j] == k:
-                            if j + 2 < len(data[i]) and (data[i][j + 1] == data[i][j + 2] == k):
-                                s = k * 3
-                                j += 2
-                            else:
-                                s = k
-                            break
-
-            j += 1
+        _, s = _generate_mask(data[i])
 
         if s and len(s) == 3 and i + 1 < len(data):
+            if data[i].endswith('\\'):
+                data[i] += '\\'
+
             if data[i].rstrip()[-3:] == s:
-                t = len(data[i]) + 5
                 data[i] = data[i][:-3] + r"'\n'+" + s + data[i + 1]
             else:
-                t = len(data[i]) + 12
                 data[i] += s + r"+'\n'+" + s + data[i + 1]
             del data[i + 1]
         else:
             assert not s
             i += 1
-            t = 0
 
 
 # обьединяет строки если это возможно
@@ -237,3 +166,48 @@ def optimize_str_count(data: List[str]):
                 del data[i]
             else:
                 i += 1
+
+
+def _generate_mask(arg: str, s: str=None) -> Tuple[List[bool], str]:
+    """
+    :param arg: строка для генерации маски
+    :param s: строка из симвала(ов), открывающих строку. (передавать если
+    эта строка в многострочной строке)
+    :return: список, где True соответствует элементам не в комментарии и
+    строку, равную симвалам незакрытой строки.
+    """
+
+    if s == 'last': s = _generate_mask.LAST_S
+    res = [False for _ in range(len(arg))]
+    i = 0
+    while i < len(arg):
+        if s:
+            k = 0  # количество знаков r'\' перед симвалом
+            while i - k > 0 and arg[i - k - 1] == '\\': k += 1
+
+            if k % 2 == 0:
+                if arg[i: i + 3].startswith(s):
+                    i += len(s)
+                    s = None
+                    continue
+        elif arg[i] in ('"', "'"):
+            s = arg[i]
+
+            if i + 2 < len(arg) and arg[i] == arg[i + 1] == arg[i + 2]:
+                i += 3
+                s *= 3
+            else:
+                i += 1
+
+            continue
+
+        if s:
+            res[i] = True
+
+        i += 1
+
+    _generate_mask.LAST_S = s
+    return res, s
+
+
+_generate_mask.LAST_S: str = None
