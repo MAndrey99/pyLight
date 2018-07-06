@@ -73,7 +73,10 @@ def process_path(p: Path):
                     for_each_in_dir(it, result_dir)
                 elif it.is_file() and it.suffix in ('.py', '.pyw'):
                     print("обработка", it.name)
-                    (result_dir / it.name if result_dir else it).write_text(process(it.read_text(encoding="utf8")), encoding="utf8")
+                    (result_dir / it.name if result_dir else it).write_text(
+                                                                                process(it.read_text(encoding="utf8")),
+                                                                                encoding="utf8"
+                                                                            )
 
         for_each_in_dir(p, result_dir)
 

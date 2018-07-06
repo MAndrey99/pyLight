@@ -14,7 +14,9 @@ def super_split(data: str) -> List[str]:
         if not s:
             t = data[i].lstrip()
             if t:
-                if t[0] == 'r': t = t[1:]
+                if t[0] in 'rbf': t = t[1:]
+                if t and t[0] in 'rbf': t = t[1:]
+
                 if t[:3] in ('"""', "'''"):
                     if t[:3] == t[-3:] and len(t) > 5:
                         del data[i]
@@ -23,7 +25,7 @@ def super_split(data: str) -> List[str]:
             if not data[i] or data[i].isspace():
                 del data[i]
                 continue
-        elif data[i].lstrip().startswith(s) or data[i].lstrip().startswith('r' + s):
+        elif data[i].lstrip().startswith(s) or (len(s) == 5 and data[i].lstrip().startswith(s[1] + s[0] + s[2:])):
             # найдено начало многострочного комментария
             while i + 1 < len(data):
                 _, t = _generate_mask(data[i + 1], 'last')
@@ -54,7 +56,8 @@ def del_spaces(data: List[str]):
         res = blocks[0]
 
         for i in range(1, len(blocks)):
-            if (blocks[i - 1][-1].isalnum() or blocks[i - 1][-1] == '_') and (blocks[i][0].isalnum() or blocks[i][0] == '_'):
+            if (blocks[i - 1][-1].isalnum() or blocks[i - 1][-1] == '_')\
+                    and (blocks[i][0].isalnum() or blocks[i][0] == '_'):
                 res += ' '
             res += blocks[i]
 
@@ -90,14 +93,15 @@ def update_multiline_strings(data: List[str]):
     while i < len(data):
         _, s = _generate_mask(data[i])
 
-        if s and len(s) == 3 and i + 1 < len(data):
+        if s and len(s) >= 3 and i + 1 < len(data):
+            # если есть незакрытый многострочный комментарий на непоследней строке
             if data[i].endswith('\\'):
                 data[i] += '\\'
 
-            if data[i].rstrip()[-3:] == s:
-                data[i] = data[i][:-3] + r"'\n'+" + s + data[i + 1]
+            if data[i][-len(s):] == s:
+                data[i] = data[i][:-len(s)] + ('b' if 'b' in s else '') + r"'\n'+" + s + data[i + 1]
             else:
-                data[i] += s + r"+'\n'+" + s + data[i + 1]
+                data[i] += s[-3:] + ('b' if 'b' in s else '') + r"+'\n'+" + s + data[i + 1]
             del data[i + 1]
         else:
             assert not s
@@ -111,7 +115,8 @@ def optimize_str_count(data: List[str]):
         :param a: трока к которой мы хотим потсоединить b
         :param b: подсоединяемая строка
         :param c: строка после подсоединяемой для понимания контекста
-        :return: 0 если соединить нельзя. 1 если можно соединить через ';'. 2 если можно соединить через пробел. 3 если можно просто соединить без всего.
+        :return: 0 если соединить нельзя. 1 если можно соединить через ';'. 2 если можно соединить через пробел.
+        3 если можно просто соединить без всего.
         """
 
         # проверка на вхождение в литералы коллекций и прочую фигню(например параметры функций)
@@ -173,6 +178,12 @@ def _generate_mask(arg: str, s: str=None) -> Tuple[List[bool], str]:
     """
 
     if s == 'last': s = _generate_mask.LAST_S
+
+    is_raw = s and 'r' in s
+    is_binary = s and 'b' in s
+    is_format = s and 'f' in s
+    s = s and ''.join(filter(lambda x: x in '\'"', s))
+
     res = [False for _ in range(len(arg))]
     i = 0
     while i < len(arg):
@@ -183,9 +194,20 @@ def _generate_mask(arg: str, s: str=None) -> Tuple[List[bool], str]:
             if k % 2 == 0:
                 if arg[i: i + 3].startswith(s):
                     i += len(s)
-                    s = None
+                    s = is_raw = is_binary = is_format = None
                     continue
         elif arg[i] in ('"', "'"):
+            if i > 0 and arg[i - 1].isalpha():
+                is_raw = arg[i - 1] == 'r'
+                is_binary = arg[i - 1] == 'b'
+                is_format = arg[i - 1] == 'f'
+
+                if i > 1 and arg[i - 2].isalpha():
+                    is_raw = is_raw or arg[i - 2] == 'r'
+                    is_binary = is_binary or arg[i - 2] == 'b'
+                    is_format = is_format or arg[i - 2] == 'f'
+            else:
+                is_binary = is_format = is_raw = False
             s = arg[i]
 
             if i + 2 < len(arg) and arg[i] == arg[i + 1] == arg[i + 2]:
@@ -204,7 +226,10 @@ def _generate_mask(arg: str, s: str=None) -> Tuple[List[bool], str]:
 
         i += 1
 
-    _generate_mask.LAST_S = s
+    assert (s is None) ^ (is_raw is not None and is_binary is not None and is_format is not None)
+    assert not is_binary or not is_format
+
+    _generate_mask.LAST_S = s = 'r'*int(is_raw) + 'f'*int(is_format) + 'b'*int(is_binary) + s if s else None
     return res, s
 
 

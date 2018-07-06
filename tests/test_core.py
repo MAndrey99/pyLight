@@ -1,12 +1,5 @@
-from random import randint
 import core
 import re
-
-
-# вернёт True один на count раз
-def randbool(count: int = 2) -> bool:
-    assert count > 1
-    return not bool(randint(0, count - 1))
 
 
 # превращает строку из 0 и 1 в булевский массив
@@ -37,8 +30,8 @@ def test_super_split():
         (" xaxaxa = '#' # FFF", [" xaxaxa = '#'"]),
         ("\n  \nxaxaxa    # comment", ["xaxaxa"]),
         ("t = r'''\n xe # c\n\n'''", ["t = r'''", " xe # c", "", "'''"]),
-
         ("'''fgyuik/\\ed'''\na", ['a']),
+        ("fr'''xe'''\n" + 'rb"""xe"""', []),
         ("sdfr\n'''sdfr7890(*&/* ss\t({'''", ["sdfr"]),
         ("ss\\n'''s'''", ["ss\\n'''s'''"]),
         ("r'''ooo ye'''\nxaxa\nr'''xxx'''\n", ["xaxa"]),
@@ -125,7 +118,9 @@ def test_update_multiline_strings():
         (
             ['r = """', '_ """ + \'\'\'', "a b c", "", "'''"],
             ['r = \'\\n\'+"""_ """ + \'\\n\'+\'\'\'a b c\'\'\'+\'\\n\'+\'\\n\'+\'\'\'\'\'\''],
-        )
+        ),
+        (['t = r"""', '', '\\ten"""'], ['t = \'\\n\'+\'\\n\'+r"""\\ten"""']),
+        # (['t = rb"""', '"text"', 'a"""'], ['t = b\'\\n\'+rb""""text""""+b\'\\n\'+rb"""a"""']) TODO
     ]
 
     for i, j in cases:
@@ -138,7 +133,9 @@ def test_generate_mask():
     cases = [
         ("h e l l o# 'rrr", to_bool_array('0'*9)),
         ("a = b'yt \" w\"' + 's'", to_bool_array('(0*6)(1*7)(0*5)10')),
-        ("r''' \\'\\'\\' end'''", to_bool_array('000011111111111000'))
+        ("r''' \\'\\'\\' end'''", to_bool_array('000011111111111000')),
+        (r"a = '\n'+'''b\\'''+'\n'+'''c '''", to_bool_array('(0*5)11(0*5)111(0*5)11(0*5)11000')),
+        ('t = b\'\\n\'+rb"""text"""+b\'\\n\'+rb"""a"""', to_bool_array('(0*6)11(0*7)1111(0*6)11(0*7)1000'))
     ]
 
     for i, j in cases:
@@ -149,9 +146,12 @@ def test_generate_mask():
 
     # проверяем способность опознавать незакрытые строки
     cases = [
-        ("a = b'''", "'''"),
+        ("a = rb'''", "rb'''"),
+        ("a = br'''", "rb'''"),
+        ("a = fr'''", "rf'''"),
         ("'tooo", "'"),
-        ('r""" \'\'\' """ + """', '"""')
+        ('r""" \'\'\' """ + """', '"""'),
+        ('  r"""  ', 'r"""')
     ]
 
     for i, j in cases:
@@ -162,7 +162,7 @@ def test_generate_mask():
     cases = [
         ("xe", '"""', '"""'),
         ("to ''' tooo ''' toooooo''t'", "'''", "'''"),
-        ("'rr'''r'", "'''", "'"),
+        ("'rr'''r'", "'''", "r'"),
         ('aass""", \'\'\'v', "'''", None)
     ]
 
