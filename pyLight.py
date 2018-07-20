@@ -2,7 +2,9 @@ from pathlib import Path
 from os import system
 from sys import platform, argv
 from time import time
+
 import core
+import postprocessing
 
 HEAD = r"""
              _      _       _     _
@@ -150,12 +152,20 @@ def main():
                     rename_locals = True
             else:
                 assert len(i) >= 2
-                if i[1] == 'a':
-                    noasserts = True
-                elif i[1] == 'r':
-                    rename_locals = True
-                elif i[1] == 'd':
-                    nonewdir = True
+                i = i[1:]
+
+                while i:
+                    if i[0] == 'a':
+                        noasserts = True
+                    elif i[0] == 'r':
+                        rename_locals = True
+                    elif i[0] == 'd':
+                        nonewdir = True
+                    else:
+                        print(f"Передан неверный ключ!({i[0]})")
+                        return
+
+                    i = i[1:]
         else:
             i = Path(i)
 
@@ -166,6 +176,7 @@ def main():
             assert i.is_dir() or i.is_file()
             targets.append(i)
 
+    # обробатываем все питоновские скрипты по переданным путям
     for i in targets:
         assert (i.is_file() and i.suffix in ('.py', '.pyw')) or i.is_dir()
         process_path(i)

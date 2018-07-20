@@ -98,10 +98,42 @@ def update_multiline_strings(data: List[str]):
             if data[i].endswith('\\'):
                 data[i] += '\\'
 
-            if data[i][-len(s):] == s:
-                data[i] = data[i][:-len(s)] + ('b' if 'b' in s else '') + r"'\n'+" + s + data[i + 1]
+            # симвал начала строки, в которой не надо экранировать s
+            t = ('b' if 'b' in s else '') + '\'"'[not bool('\'"'.find(s[-1]))]
+
+            n_beg = 0  # количество симвалов начала строки(' или ") в начале строки, которые надо экранировать
+            while n_beg < len(data[i + 1]) and data[i + 1][n_beg] == s[-1]:
+                n_beg += 1
+
+            n_end = 0  # то же, но в конце
+            while n_end < len(data[i + 1]) and data[i + 1][n_end] == s[-1]:
+                n_end += 1
+
+            if n_beg == 3:
+                n_beg = 0
+
+            if n_end == 3:
+                n_end = 0
+
+            if data[i].endswith(s):
+                data[i] = f"{data[i][:-len(s)]}{t}\\n{s[-1]*n_beg}{t[-1]}+" \
+                          f"{s}{data[i + 1][n_beg: -n_end if n_end > 0 else None]}" \
+                          f"{f'{s[-3:]}+{t}{s[-1]*n_end}{t[-1]}+{s}' * (n_end > 0)}"
+                del data[i + 1]
+                continue
+
+            assert n_beg < 3 and n_beg < 3
+
+            if n_end:
+                data[i + 1] = data[i + 1][:-n_end]
+                data[i + 2] = f"{s[-3:]}+{t}{s[-1]*n_end}{t[-1]}+{s}{data[i + 2]}"
+
+            if n_beg:
+                data[i + 1] = data[i + 1][n_beg:]
+                data[i] += f"{s[-3:]}+{t}{s[-1]*n_beg}\\\\n{t[-1]}+{s}{data[i + 1]}"
             else:
-                data[i] += s[-3:] + ('b' if 'b' in s else '') + r"+'\n'+" + s + data[i + 1]
+                data[i] += f"{s[-3:]}+{t}\\n{t[-1]}+{s}{data[i+1]}"
+
             del data[i + 1]
         else:
             assert not s
