@@ -91,49 +91,34 @@ def del_spaces(data: List[str]):
 def update_multiline_strings(data: List[str]):
     i = 0  # номер строки на которой мы находимся
     while i < len(data):
-        _, s = _generate_mask(data[i])
+        mask, s = _generate_mask(data[i])
 
-        if s and len(s) >= 3 and i + 1 < len(data):
-            # если есть незакрытый многострочный комментарий на непоследней строке
-            if data[i].endswith('\\'):
-                data[i] += '\\'
+        if s and len(s) >= 3 and i + 1 < len(data):  # если есть многострочная строка
+            # ищем закрывающие симвалы
+            begin = data[i].find(s)  # начало строки
 
-            # симвал начала строки, в которой не надо экранировать s
-            t = ('b' if 'b' in s else '') + '\'"'[not bool('\'"'.find(s[-1]))]
+            g = i + 1
+            mask, _ = _generate_mask(data[g], s)
 
-            n_beg = 0  # количество симвалов начала строки(' или ") в начале строки, которые надо экранировать
-            while n_beg < len(data[i + 1]) and data[i + 1][n_beg] == s[-1]:
-                n_beg += 1
+            while all(mask):  # пока все исмвалы находятся в коментарии
+                g += 1
+                mask, _ = _generate_mask(data[g], s)
 
-            n_end = 0  # то же, но в конце
-            while n_end < len(data[i + 1]) and data[i + 1][n_end] == s[-1]:
-                n_end += 1
+            end = mask.index(False) + 3  # конец закрывающих симвалов
 
-            if n_beg == 3:
-                n_beg = 0
+            # получаем итоговую строку
+            string = eval(
+                data[i][begin:] + ('\n' if len(data[i]) == begin + len(s) else '')
+                + '\n'.join([data[i] for i in range(i + 1, g)]) + '\n' + data[g][:end]
+                         )
+            assert type(string) in (str, bytes)
 
-            if n_end == 3:
-                n_end = 0
-
-            if data[i].endswith(s):
-                data[i] = f"{data[i][:-len(s)]}{t}\\n{s[-1]*n_beg}{t[-1]}+" \
-                          f"{s}{data[i + 1][n_beg: -n_end if n_end > 0 else None]}" \
-                          f"{f'{s[-3:]}+{t}{s[-1]*n_end}{t[-1]}+{s}' * (n_end > 0)}"
+            # удаляем строки между i и g
+            for _ in range(1, g - i):
                 del data[i + 1]
-                continue
 
-            assert n_beg < 3 and n_beg < 3
-
-            if n_end:
-                data[i + 1] = data[i + 1][:-n_end]
-                data[i + 2] = f"{s[-3:]}+{t}{s[-1]*n_end}{t[-1]}+{s}{data[i + 2]}"
-
-            if n_beg:
-                data[i + 1] = data[i + 1][n_beg:]
-                data[i] += f"{s[-3:]}+{t}{s[-1]*n_beg}\\\\n{t[-1]}+{s}{data[i + 1]}"
-            else:
-                data[i] += f"{s[-3:]}+{t}\\n{t[-1]}+{s}{data[i+1]}"
-
+            # удаляем старую строку и обьединяем строки с новой
+            data[i] = data[i][:begin] + repr(string) + data[i + 1][end:]
             del data[i + 1]
         else:
             assert not s
@@ -209,7 +194,8 @@ def _generate_mask(arg: str, s: str=None) -> Tuple[List[bool], str]:
     строку, равную симвалам незакрытой строки.
     """
 
-    if s == 'last': s = _generate_mask.LAST_S
+    if s == 'last':
+        s = _generate_mask.LAST_S
 
     is_raw = s and 'r' in s
     is_binary = s and 'b' in s
