@@ -1,4 +1,5 @@
 from typing import List, Tuple
+import re
 
 
 # разбивает файл на строки с кодом без комментариев в конце и превращает табуляцию в пробелы
@@ -14,8 +15,10 @@ def super_split(data: str) -> List[str]:
         if not s:
             t = data[i].lstrip()
             if t:
-                if t[0] in 'rbf': t = t[1:]
-                if t and t[0] in 'rbf': t = t[1:]
+                if t[0] in 'rbf':
+                    t = t[1:]
+                if t and t[0] in 'rbf':
+                    t = t[1:]
 
                 if t[:3] in ('"""', "'''"):
                     if t[:3] == t[-3:] and len(t) > 5:
@@ -47,7 +50,8 @@ def super_split(data: str) -> List[str]:
 def del_spaces(data: List[str]):
     def process(s: str) -> str:
         """
-        Удаляет лишние пробелы из строки.
+        Удаляет лишние пробелы из строки
+
         :param s: строка, в которой надо удалить лишние пробелы
         :return: строка без пробелов
         """
@@ -89,6 +93,34 @@ def del_spaces(data: List[str]):
 
 # многострочные строки соединяет в одну линию с помощью добавления '\n'
 def update_multiline_strings(data: List[str]):
+    def unfs(s: str) -> Tuple[str, str]:
+        """
+        превращает строки типа f't e x {value(:.*?)?} t' в строки типа 't e x {(:.*?)?} t'.format(value)
+
+        :return: обработанная строка и дополнительная строка с методом format,
+        которая не должна попасть в eval тк содержит переменные
+        """
+
+        # удаляем обозначение f-строки
+        assert (s[0] == 'f') ^ (s[1] == 'f')
+        s = s.replace('f', '', 1)
+
+        reg = re.compile(r'{(?![:}])(?P<var_name>.*?)(?::.*?)?}')
+        match = reg.search(s)
+
+        if not match:
+            return s, ''  # Вернём всё как есть
+        else:
+            postfix = '.format('
+
+        # проходя по всем позициям будем убирать значения и переносить их в аргументы метода format
+        while match:
+            s = s[:match.start('var_name')] + s[match.end('var_name'):]
+            postfix += match.group('var_name') + ','
+            match = reg.search(s)
+
+        return s, postfix[:-1] + ')'
+
     i = 0  # номер строки на которой мы находимся
     while i < len(data):
         mask, s = _generate_mask(data[i])
@@ -107,18 +139,20 @@ def update_multiline_strings(data: List[str]):
             end = mask.index(False) + 3  # конец закрывающих симвалов
 
             # получаем итоговую строку
-            string = eval(
-                data[i][begin:] + ('\n' if len(data[i]) == begin + len(s) else '')
-                + '\n'.join([data[i] for i in range(i + 1, g)]) + '\n' + data[g][:end]
-                         )
-            assert type(string) in (str, bytes)
+            string = data[i][begin:] + ('\n' if len(data[i]) == begin + len(s) else '') \
+                     + '\n'.join([data[i] for i in range(i + 1, g)]) + '\n' + data[g][:end]
+            if 'f' in s:  # f-string
+                string, postfix = unfs(string)
+            else:
+                postfix = ''  # тут то, что не должно попасть в eval и находится в конце пр: .format(...) для f-строк
+            string = repr(eval(string)) + postfix
 
             # удаляем строки между i и g
             for _ in range(1, g - i):
                 del data[i + 1]
 
             # удаляем старую строку и обьединяем строки с новой
-            data[i] = data[i][:begin] + repr(string) + data[i + 1][end:]
+            data[i] = data[i][:begin] + string + data[i + 1][end:]
             del data[i + 1]
         else:
             assert not s

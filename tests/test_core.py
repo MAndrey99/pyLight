@@ -106,7 +106,8 @@ def test_update_multiline_strings():
         (['r = """', '_ """ + \'\'\'', "a b c", "", "'''"], ["r = '\\n\\n_ ' + '\\na b c\\n\\n'"],),
         (['t = r"""', '', '\\ten"""'], ["t = '\\n\\n\\\\ten'"]),
         (['t = rb"""', '"text"', 'a""".replace(a, "xe")'], ['t = b\'\\n"text"\\na\'.replace(a, "xe")']),
-        # (["t = f'''", "text{value:.2f}text2", "xa", "'''[1:]"], ["?"])  # TODO
+        (["t = f'''", "text{value:.2f}text2", "xa", "'''[1:]"], ["t = '\\ntext{:.2f}text2\\nxa\\n'.format(value)[1:]"]),
+        (["t = rf'''\\n", "{a if a else b}", "'''"], ["t = '\\\\n{}\\n'.format(a if a else b)"])
     ]
 
     for i, j in cases:
