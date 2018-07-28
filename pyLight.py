@@ -33,8 +33,8 @@ HELP = """
 
 
 # Настройки
-noasserts = False      # TODO: действие
-rename_locals = False  # TODO: -||-
+noasserts = False
+rename_locals = False
 nonewdir = False
 
 
@@ -50,6 +50,14 @@ def process(data: str) -> str:
 
     # удаляем пробелы между операторами
     core.del_spaces(data)
+
+    # удаляем assert'ы
+    if noasserts:
+        postprocessing.del_asserts(data)
+
+    # пререименовываем локальные переменные
+    if rename_locals:
+        postprocessing.rename_locals(data)
 
     return '\n'.join(data)
 
