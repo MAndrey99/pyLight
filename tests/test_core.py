@@ -49,7 +49,7 @@ def test_del_spaces():
     cases = [
         ([" a + b - c / (kkks :15)  "], [" a+b-c/(kkks:15)"]),
         (["a:   r-v", "for i  in c"], ["a:r-v", "for i in c"]),
-        (["from logging import ERROR, INFO"], ["from logging import ERROR,INFO"]),
+        (["from  logging import ERROR, INFO"], ["from logging import ERROR,INFO"]),
         (["if __name__ == __main__: "], ["if __name__==__main__:"]),
         (["    hello = ' hello  \\\\' + 'a'", "   t  +=1 "], ["    hello=' hello  \\\\'+'a'", "   t+=1"]),
         (

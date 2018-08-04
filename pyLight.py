@@ -25,9 +25,10 @@ __ _/ | /  \
 
 HELP = """
 ключевые параметры:  
---noasserts или -a  -  все assert'ы будут удалены из кода.  
---rename    или -r  - все имена локальных переменных будут изменены.  
---nonewdir  или -d  - все изменённые файлы/директории записываются взамен старых.  
+'--enable_annotations'  # не удалять анотации функций
+--noasserts или -a  -  все assert'ы будут удалены из кода.
+--rename    или -r  - все имена локальных переменных будут изменены.
+--nonewdir  или -d  - все изменённые файлы/директории записываются взамен старых.
 --help      или -h  - получить справочную информацию
 """
 
@@ -36,6 +37,7 @@ HELP = """
 noasserts = False
 rename_locals = False
 nonewdir = False
+ennable_annotations = False
 
 
 def process(data: str) -> str:
@@ -51,13 +53,17 @@ def process(data: str) -> str:
     # удаляем пробелы между операторами
     core.del_spaces(data)
 
+    # удаляем анотации функций
+    if not ennable_annotations:
+        postprocessing.delete_annotations(data)
+
     # удаляем assert'ы
     if noasserts:
         postprocessing.del_asserts(data)
 
     # пререименовываем локальные переменные
     if rename_locals:
-        postprocessing.rename_locals(data)
+        postprocessing.rename_locals(data, ennable_annotations)
 
     return '\n'.join(data)
 
@@ -138,7 +144,7 @@ def menu():
 
 
 def main():
-    global noasserts, rename_locals, nonewdir
+    global noasserts, rename_locals, nonewdir, ennable_annotations
 
     if len(argv) == 1:
         menu()  # Передаём власть менюшке
@@ -158,6 +164,8 @@ def main():
                     rename_locals = True
                 elif i[2:] == 'nonewdir':
                     rename_locals = True
+                elif i[2:] == 'enable_annotations':
+                    ennable_annotations = True
             else:
                 assert len(i) >= 2
                 i = i[1:]
