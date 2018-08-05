@@ -2,6 +2,7 @@ import re
 from typing import List
 from operator import getitem
 from functools import partial
+from io import StringIO
 
 from core import _generate_mask
 
@@ -101,6 +102,38 @@ def delete_annotations(data: List[str]):
         i += 1
 
 
+def _arguments(definition: str, have_annotations: bool) -> List[str]:
+    """
+    Даёт список аргументов обьявленной функции
+
+    :param definition: строка с обьявлением функции без пробельных симвалов в начале
+    """
+    assert definition.endswith('):')
+
+    if definition.startswith('async'):
+        definition = definition[6:]
+
+    if have_annotations:
+        t = [definition]
+        delete_annotations(t)
+        definition = t[0]  # теперь definition без аннотаций
+
+    if '"' in definition or "'" in definition:
+        # удаляем содержимое строчных литералов чтобы не мешалось
+        mask, _ = _generate_mask(definition)
+        t = StringIO()
+
+        for i in range(len(mask)):
+            if not mask[i]:
+                t.write(definition[i])
+
+        definition = t.getvalue()
+
+    # вместе с =...
+    with_eq = list(filter(bool, map(lambda x: x.replace('*', ''), definition[definition.find('(') + 1:-2].split(','))))
+    return list(map(lambda x: x if '=' not in x else x[:x.find('=')], with_eq))  # удераем значения по умолчанию
+
+
 def rename_locals(data: List[str], have_annotations=True):
     """
     переименовывает все локальные переменные в функциях
@@ -112,24 +145,6 @@ def rename_locals(data: List[str], have_annotations=True):
     def search(varname: str, text: str) -> re.Match:
         """ищем переменную в тексте"""
         return re.search(r"(?<!\.)\b{}\b".format(varname), text)
-
-    def arguments(definition: str) -> List[str]:
-        """
-        Даёт список аргументов обьявленной функции
-
-        :param definition: строка с обьявлением функции без пробельных симвалов в начале
-        """
-        assert definition.endswith('):')
-
-        if definition.startswith('async'):
-            definition = definition[6:]
-
-        if have_annotations:
-            t = [definition]
-            delete_annotations(t)
-            definition = t[0]  # теперь definition без аннотаций
-
-        return list(filter(bool, map(lambda x: x.replace('*', ''), definition[definition.find('(') + 1:-2].split(','))))
 
     reg_var = re.compile(r"[A-Za-z_][\w_]*")  # имя переменной
     reg_make_vars = re.compile(r"(?:(?:[A-Za-z_][\w_]*)\*?)(?:,(?:[A-Za-z_][\w_]*)\*?)*(?<!,)=.+") # создание переменных
@@ -149,7 +164,7 @@ def rename_locals(data: List[str], have_annotations=True):
             # мы в функции!!!
 
             # создаём словарь[орегинал, на что заменяем(если None, то не заменяем)]
-            l_v = {it: None for it in arguments(data[i].lstrip())}
+            l_v = {it: None for it in _arguments(data[i].lstrip(), have_annotations)}
             l_v['_'] = None
 
             func_begin = i
@@ -184,21 +199,19 @@ def rename_locals(data: List[str], have_annotations=True):
 
                 i += 1  # шаг цикла. идём по всей функции
 
-                func_end = i
-                i += 1
-                while i > func_begin:
-                    i -= 1  # шаг цикла. идём назад к началу функции
+            func_end = i - 1  # i это уже следующая после конца функции строка
 
-                    # проверяем на каждой строчке наличае переменных, которые заменяются
-                    for it in filter(partial(getitem, l_v), l_v.keys()):
-                        while True:
-                            match = search(it, data[i])
-                            if not match:
-                                break
+            while i > func_begin:
+                i -= 1  # шаг цикла. идём назад к началу функции
 
-                            # заменяем совпвыший фрагмент
-                            data[i] = data[i][:match.start()] + l_v[it] + data[i][match.end():]
+                # проверяем на каждой строчке наличае переменных, которые заменяются
+                for it in filter(partial(getitem, l_v), l_v.keys()):
+                    while True:
+                        match = search(it, data[i])
+                        if not match:
+                            break
 
-                i = func_end  # далее будем искать функции уже после рассмотренной
+                        # заменяем совпвыший фрагмент
+                        data[i] = data[i][:match.start()] + l_v[it] + data[i][match.end():]
 
-    # TODO: TEST!!!
+            i = func_end  # далее будем искать функции уже после рассмотренной
