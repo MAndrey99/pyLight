@@ -147,7 +147,7 @@ def rename_locals(data: List[str], have_annotations=True):
         return re.search(r"(?<!\.)\b{}\b".format(varname), text)
 
     reg_var = re.compile(r"[A-Za-z_][\w_]*")  # имя переменной
-    reg_make_vars = re.compile(r"(?:(?:[A-Za-z_][\w_]*)\*?)(?:,(?:[A-Za-z_][\w_]*)\*?)*(?<!,)=.+") # создание переменных
+    reg_make_vars = re.compile(r"(?:\*?[A-Za-z_][\w_]*)(?:,\*?(?:[A-Za-z_][\w_]*))*(?<!,)=.+")  # создание переменных
 
     i = -1
     while i + 1 < len(data):
@@ -190,12 +190,13 @@ def rename_locals(data: List[str], have_annotations=True):
 
                         # проходим сюда когда действие command создаёт переменные
                         variables = command[:command.find('=')].split(',')
-                        for n in range(len(variables)):
-                            if variables[n][-1] == '*':
-                                variables[n] = variables[n][:-1]
+                        for it in variables:
+                            if it[0] == '*':
+                                it = it[1:]
+                            assert '*' not in it
 
-                            if variables[n] not in l_v.keys():
-                                l_v[variables[n]] = f'_{_convert_base(abs(hash(variables[n])))}'  # генерируем новое имя
+                            if it not in l_v.keys():
+                                l_v[it] = f'_{_convert_base(abs(hash(it)))}'  # генерируем новое имя
 
                 i += 1  # шаг цикла. идём по всей функции
 

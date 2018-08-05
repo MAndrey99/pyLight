@@ -53,7 +53,7 @@ def test_arguments():
         "def ___f_____(a):": ['a'],
         "def f1o(a:int=5):": ['a'],
         "def _f1(a,b:bool,*p,c='yey:s,k',**):": ['a', 'b', 'p', 'c'],
-        "def _f1(a,b:bool,*,c='yey:s,k',**kwargs):": ['a', 'b', 'c', 'kwargs']
+        "async def _f1(a,b:bool,*,c='yey:s,k',**kwargs):": ['a', 'b', 'c', 'kwargs']
     }
 
     for i in case1.keys():
@@ -63,7 +63,7 @@ def test_arguments():
         "def ___f_____(a):": ['a'],
         "def f1o(a=5):": ['a'],
         "def _f1(a,b,*p,c='yey,k',**):": ['a', 'b', 'p', 'c'],
-        "def _f1(a,b,*,c='yey',**kwargs):": ['a', 'b', 'c', 'kwargs']
+        "async def _f1(a,b,*,c='yey',**kwargs):": ['a', 'b', 'c', 'kwargs']
     }
 
     for i in case2.keys():
@@ -73,31 +73,31 @@ def test_arguments():
 def test_rename_locals():
     case = \
 ([
-    'SUPER_TRUE=True',
-    'def super_func(yey:bool,*,xex=SUPER_TRUE,**kwargs):',
-    '    t=yey-xex',
-    '    async def megafunc(xex=yey,moo=t):',
-    '        xex=yey',
-    '        moo=t+k',
-    '    k=megafunc',
-    'def f2():',
-    '    global SUPER_TRUE',
-    '    false=False',
-    '    SUPER_TRUE=false',
-    '    return SUPER_TRUE or false'
+    ' SUPER_TRUE,T=True,Temp',
+    ' def super_func(yey:bool,*,xex=SUPER_TRUE,**kwargs):',
+    '     t=yey-xex',
+    '     async def megafunc(xex=yey,moo=t):',
+    '         y,*_,xex=yey',
+    '         moo=t+k',
+    '     k=megafunc',
+    ' def f2():',
+    '     global SUPER_TRUE',
+    '     false=False',
+    '     SUPER_TRUE=false',
+    '     return SUPER_TRUE or false'
 ], [
-    'SUPER_TRUE=True',
-    'def super_func(yey:bool,*,xex=SUPER_TRUE,**kwargs):',
-    '    <hash0>=yey-xex',
-    '    async def megafunc(xex=yey,<hash1>=<hash0>):',
-    '        xex=yey',
-    '        <hash1>=<hash0>+<hash2>',
-    '    <hash2>=megafunc',
-    'def f2():',
-    '    global SUPER_TRUE',
-    '    <hash3>=False',
-    '    SUPER_TRUE=<hash3>',
-    '    return SUPER_TRUE or <hash3>'
+    ' SUPER_TRUE,T=True,Temp',
+    ' def super_func(yey:bool,*,xex=SUPER_TRUE,**kwargs):',
+    '     <hash0>=yey-xex',
+    '     async def megafunc(xex=yey,<hash1>=<hash0>):',
+    '         <hash4>,*_,xex=yey',
+    '         <hash1>=<hash0>+<hash2>',
+    '     <hash2>=megafunc',
+    ' def f2():',
+    '     global SUPER_TRUE',
+    '     <hash3>=False',
+    '     SUPER_TRUE=<hash3>',
+    '     return SUPER_TRUE or <hash3>'
 ])
     postprocessing.rename_locals(case[0])
 
