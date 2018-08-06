@@ -24,14 +24,14 @@ def test_del_asserts():
 def test_delete_annotations():
     data_in = [
         "from postprocessing import delete annotations as da",
-        "da:function",
+        "da:Dict[function, int]",
         "da:function.magic._Da_",
         "da+=1",
         "da=15",
         "____:Magic if da else not Magic=1771717175**16.f('gg')",
         "async def my_super_f(xe):pass",
-        "async def my_super_f(xe:Sum_type=15,n:int.___,*r,ppp:int=',t:OPEN',p=True, **):pass",
-        "async def my_super_f(xe:Sum_type=15,n:int.___,*,ppp:int=',**t:OPEN',p=True):",
+        "async def my_super_f(xe:Sum_type=15,n:int.___,*r,ppp:int=',t:OPEN[in',p=True,op:List[int],**):pass",
+        "async def my_super_f(xe:Sum_type=15,n:int._,*,ppp:int=',**t:OPEN',p=True,op:Dict[int,List[float]]={1:[.5]}):",
     ]
 
     data_out = [
@@ -40,8 +40,8 @@ def test_delete_annotations():
         "da=15",
         "____=1771717175**16.f('gg')",
         "async def my_super_f(xe):pass",
-        "async def my_super_f(xe=15,n,*r,ppp=',t:OPEN',p=True, **):pass",
-        "async def my_super_f(xe=15,n,*,ppp=',**t:OPEN',p=True):",
+        "async def my_super_f(xe=15,n,*r,ppp=',t:OPEN[in',p=True,op,**):pass",
+        "async def my_super_f(xe=15,n,*,ppp=',**t:OPEN',p=True,op={1:[.5]}):",
     ]
 
     postprocessing.delete_annotations(data_in)
@@ -53,7 +53,7 @@ def test_arguments():
         "def ___f_____(a):": ['a'],
         "def f1o(a:int=5):": ['a'],
         "def _f1(a,b:bool,*p,c='yey:s,k',**):": ['a', 'b', 'p', 'c'],
-        "async def _f1(a,b:bool,*,c='yey:s,k',**kwargs):": ['a', 'b', 'c', 'kwargs']
+        "async def _f1(a,b:List[int],*,c='yey:s,k',**kwargs):": ['a', 'b', 'c', 'kwargs']
     }
 
     for i in case1.keys():

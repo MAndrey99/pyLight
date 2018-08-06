@@ -67,6 +67,8 @@ def delete_annotations(data: List[str]):
             search_start = data[i].find('(') + 1
             search_end = data[i].rfind(')')
 
+            mask, _ = _generate_mask(data[i])
+
             # в цикле находим и удаляем все анотации
             while True:
                 match = reg_anotation.search(data[i], pos=search_start, endpos=search_end)
@@ -74,11 +76,29 @@ def delete_annotations(data: List[str]):
                 if not match:
                     break
 
-                mask, _ = _generate_mask(data[i])
-
                 if not mask[match.start()]:  # если найденный фрагмент не в комментарии
                     data[i] = data[i][:match.start()] + data[i][match.end():]
+                    mask = mask[:match.start()] + mask[match.end():]
                     search_end -= match.end() - match.start()
+
+                    if data[i][match.start()] == '[':
+                        o_count = 1  # количество незакрытых кв. скобочек
+                        p = match.start() + 1  # номер рассматриеваемого симвала
+
+                        while o_count > 0 and p < len(data[i]):
+                            if not mask[p]:
+                                if data[i][p] == ']':
+                                    o_count -= 1
+                                elif data[i][p] == '[':
+                                    o_count += 1
+
+                            p += 1
+                        assert o_count == 0
+
+                        # удаляем найденые скобочки
+                        data[i] = data[i][:match.start()] + data[i][p:]
+                        mask = mask[:match.start()] + mask[p:]
+                        search_end -= p - match.start()
                 else:
                     search_start = match.end()
 
