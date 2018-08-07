@@ -52,7 +52,9 @@ def delete_annotations(data: List[str]):
 
     :param data: список обработанных строк кода
     """
-    reg = re.compile(r'[A-Za-z_][\w_]*:.*')
+    reg_var = re.compile(r"[A-Za-z_][\w_]*")  # имя переменной
+    reg_annotation = re.compile(r'[A-Za-z_][\w_]*:.*')
+    reg_arg_annotation = re.compile(r":(?:[A-Za-z_][\w_]*\.)*(?:[A-Za-z_][\w_]*)")
 
     i = 0  # номер строки кода, которую обрабатываем
     while i < len(data):
@@ -61,17 +63,25 @@ def delete_annotations(data: List[str]):
         t = data[i].lstrip()
         if t.startswith('def ') or t.startswith('async def'):
             # удаляем аннотации функциии
-
-            # !не поддерживает функции и любые другие вырожения
-            reg_anotation = re.compile(r":(?:[A-Za-z_][\w_]*\.)*(?:[A-Za-z_][\w_]*)")
+            # ! данный метод не поддерживает функции и любые другие вырожения
             search_start = data[i].find('(') + 1
-            search_end = data[i].rfind(')')
+
+            # ищем конец функции
+            t = len(data[i])
+            while True:
+                search_end = data[i][search_start: t].rfind('):') + search_start
+
+                if not mask[search_end]:
+                    break
+
+                t = search_end - 2
+            del t
 
             mask, _ = _generate_mask(data[i])
 
             # в цикле находим и удаляем все анотации
             while True:
-                match = reg_anotation.search(data[i], pos=search_start, endpos=search_end)
+                match = reg_arg_annotation.search(data[i], pos=search_start, endpos=search_end)
 
                 if not match:
                     break
@@ -101,23 +111,47 @@ def delete_annotations(data: List[str]):
                         search_end -= p - match.start()
                 else:
                     search_start = match.end()
+        elif reg_annotation.match(t):
+            def get_colon_pos() -> int:
+                """возвращает положения симвала ':' пред аннотацией или -1"""
 
-        elif reg.match(t):
-            eq_pos = None
-            colon_pos = data[i].find(':')
+                n = 0
+                colon_pos = -1
 
-            for j in range(colon_pos, len(mask)):
-                if not mask[j]:
-                    if data[i][j] == '=' and data[i][j + 1] != '=' and data[i][j - 1] != '=':
-                        eq_pos = j
+                while n < len(data[i]):
+                    while data[i][n] != ':' and n < len(data[i]):
+                        n += 1
+
+                    var_name = data[i][colon_pos + 1: n]
+                    colon_pos = n
+
+                    if var_name not in ['try', 'else', 'finally'] and reg_var.match(var_name):
                         break
 
-            # если эта строчка чисто аннотация, то её надо удалить!
-            if eq_pos is None:
-                del data[i]
-                continue
+                    if not reg_annotation.match(data[i][colon_pos + 1:]):
+                        return -1
 
-            data[i] = data[i][:colon_pos] + data[i][eq_pos:]  # вырезаем саму аннотацию
+                    n += 1
+
+                return colon_pos
+
+            eq_pos = None
+            colon_pos = get_colon_pos()
+
+            if colon_pos != -1:
+                # ищем знак равно так чтобы не среагировать на операторы <=, !=, == и тд., а так же на строки
+                for j in range(colon_pos, len(mask)):
+                    if not mask[j]:
+                        if data[i][j] == '=' and data[i][j + 1] not in '<>!=' and data[i][j - 1] not in '<>!=':
+                            eq_pos = j
+                            break
+
+                # если эта строчка чисто аннотация, то её надо удалить!
+                if eq_pos is None:
+                    del data[i]
+                    continue
+
+                data[i] = data[i][:colon_pos] + data[i][eq_pos:]  # вырезаем саму аннотацию
 
         i += 1
 
@@ -162,9 +196,34 @@ def rename_locals(data: List[str], have_annotations=True):
     :param data: список обработанных строк кода
     """
 
-    def search(varname: str, text: str) -> re.Match:
-        """ищем переменную в тексте"""
-        return re.search(r"(?<!\.)\b{}\b".format(varname), text)
+    def commands(line: str):
+        """разбиваем строку на выражения типа: a+=1;print(a) -> a+=1 и print(a)"""
+        assert line
+
+        line = line.lstrip()
+        mask, _ = _generate_mask(line)
+
+        begin = 0  # начало рассматривоемого вырожения
+        for i in range(1, len(line)):
+            if line[i] == ';' and not mask[i]:
+                yield line[begin: i]
+                begin = i + 1
+        yield line[begin:]
+
+    def search(var_name: str, text: str) -> re.Match:
+        """ищем переменную в строке кода"""
+        mask, _ = _generate_mask(text)
+
+        while True:
+            match = re.search(r"(?<!\.)\b{}\b".format(var_name), text)
+
+            if not match:
+                return None
+
+            if mask[match.start()]:
+                text = text[:match.start()] + '-'*len(match.group()) + text[match.end():]
+            else:
+                return match
 
     reg_var = re.compile(r"[A-Za-z_][\w_]*")  # имя переменной
     reg_make_vars = re.compile(r"(?:\*?[A-Za-z_][\w_]*)(?:,\*?(?:[A-Za-z_][\w_]*))*(?<!,)=.+")  # создание переменных
@@ -192,7 +251,7 @@ def rename_locals(data: List[str], have_annotations=True):
             while i < len(data) and data[i].startswith(' ' * (level + 1)):  # пока не вышли из функции
                 assert data[i]
 
-                for command in data[i].lstrip().split(';'):
+                for command in commands(data[i]):
                     # всё, что из глобальной области видимости запоменаем и не переименовываем
                     if command.startswith('global'):
                         variables = command[7:].split(',')
@@ -226,7 +285,7 @@ def rename_locals(data: List[str], have_annotations=True):
                 i -= 1  # шаг цикла. идём назад к началу функции
 
                 # проверяем на каждой строчке наличае переменных, которые заменяются
-                for it in filter(partial(getitem, l_v), l_v.keys()):
+                for it in filter(partial(getitem, l_v), l_v.keys()):  # итерируемся по тем, что не None
                     while True:
                         match = search(it, data[i])
                         if not match:
