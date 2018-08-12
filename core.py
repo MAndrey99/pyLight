@@ -175,8 +175,9 @@ def optimize_str_count(data: List[str]):
         if b and b.lstrip()[0] in ")]}": return 3
 
         # проверка на логические вырожения
-        if len(a) >= 2:
-            if a[-2:] == "or" or (len(a) >= 3 and a[-3:] == "and"):
+        if len(a) >= 3:
+            if (a[-2:] == "or" and not a[-3].isalnum() and a[-3] != '_')\
+                    or (a[-3:] == "and" and not a[-4].isalnum() and a[-4] != '_'):
                 return 2
 
         # считаем их уровни уровни

@@ -85,6 +85,12 @@ def test_optimize_str_count():
         (
             ["if (e == 'dot' or", "e=='cfws' and", "e=='dot'):", "  append(Defect(", "'\na += b\nc\n'))"],
             ["if (e == 'dot' or e=='cfws' and e=='dot'):append(Defect('\na += b\nc\n'))"]
+        ),
+        (
+            ['import re_and', 'from typing import List, Iterator', 'from operator import getitem',
+             'from functools import partial', 'from io import StringIO', 'from core import _generate_mask'],
+            ['import re_and;from typing import List, Iterator;from operator import getitem;'
+             'from functools import partial;from io import StringIO;from core import _generate_mask']
         )
     ]
 
