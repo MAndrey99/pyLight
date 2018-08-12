@@ -62,24 +62,43 @@ def delete_annotations(data: List[str]):
         t = data[i].lstrip()
         if t.startswith('def ') or t.startswith('async def'):
             # удаляем аннотации функциии
-            # ! данный метод не поддерживает функции и любые другие вырожения
-            search_start = data[i].find('(') + 1
+            # ! данный метод не поддерживает функции и любые другие выражения
+
             mask, _ = _generate_mask(data[i])
+
+            # удаляем аннотацию возвращаемого значения
+            c = None  # позиция закрывающего список аргументов симвала
+
+            for j in range(5, len(data[i])):
+                if data[i][j] == ')' and not mask[j]:
+                    c = j
+                    break
+            assert c
+
+            c += 1
+            dtots_p = c  # позиция двоеточия
+            while data[i][dtots_p] != ':':
+                dtots_p += 1
+
+            data[i] = data[i][:c] + data[i][dtots_p:]
+
+            # удаляем аннотации аргументов
+            start = data[i].find('(') + 1
 
             # ищем конец функции
             t = len(data[i])
             while True:
-                search_end = data[i][search_start: t].rfind('):') + search_start
+                end = data[i][start: t].rfind('):') + start
 
-                if not mask[search_end]:
+                if not mask[end]:
                     break
 
-                t = search_end - 2
+                t = end - 2
             del t
 
             # в цикле находим и удаляем все анотации
             while True:
-                match = reg_arg_annotation.search(data[i], pos=search_start, endpos=search_end)
+                match = reg_arg_annotation.search(data[i], pos=start, endpos=end)
 
                 if not match:
                     break
@@ -87,7 +106,7 @@ def delete_annotations(data: List[str]):
                 if not mask[match.start()]:  # если найденный фрагмент не в комментарии
                     data[i] = data[i][:match.start()] + data[i][match.end():]
                     mask = mask[:match.start()] + mask[match.end():]
-                    search_end -= match.end() - match.start()
+                    end -= match.end() - match.start()
 
                     if data[i][match.start()] == '[':
                         o_count = 1  # количество незакрытых кв. скобочек
@@ -106,9 +125,9 @@ def delete_annotations(data: List[str]):
                         # удаляем найденые скобочки
                         data[i] = data[i][:match.start()] + data[i][p:]
                         mask = mask[:match.start()] + mask[p:]
-                        search_end -= p - match.start()
+                        end -= p - match.start()
                 else:
-                    search_start = match.end()
+                    start = match.end()
         else:
             for it in _commands(data, i):
                 mask, _ = _generate_mask(it.value)
@@ -197,25 +216,27 @@ class Fragment:
     __slots__ = ("_value", "_start", "_end")
 
     @property
-    def value(self):
+    def value(self) -> str:
         return self._value
 
     @value.setter
-    def value(self, value):
+    def value(self, value: str):
         self._value = value
 
     @value.deleter
     def value(self):
         self._value = ''
 
-    def update(self, line):
-        return (line[:self._start] if self._start else '') + self._value + (line[self._end:] if self._end else '')
+    def update(self, line: str) -> str:
+        return (line[:self._start] if self._start is not None else '')\
+               + self._value\
+               + (line[self._end:] if self._end is not None else '')
 
-    def __init__(self, line, _start=None, _end=None):
+    def __init__(self, line: str, _start: int=None, _end: int=None):
         self._value = line[_start: _end]
         self._start, self._end = _start, _end
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self._value
 
 

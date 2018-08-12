@@ -1,5 +1,7 @@
-import postprocessing
 import re
+from random import randint
+
+import postprocessing
 
 
 def test_del_asserts():
@@ -31,9 +33,11 @@ def test_delete_annotations():
         "da+=1",
         "da=15;da+=1",
         "____:Magic if da else not Magic=1771717175**16.f('gg')",
-        "async def my_super_f(xe):pass",
+        "async def my_super_f(xe)->int:pass",
         "async def my_super_f(xe:Sum_type=15,n:int.___,*r,ppp:int=',t:OPEN[in):',p=True,op:List[int],**):pr(',k):')",
         "async def my_super_f(xe:Sum_type=15,n:int._,*,ppp:int=',**t:OPEN',p=True,op:Dict[int,List[float]]={1:[.5]}):",
+        "def my_super_f(xe:Sum_type=15,n:int._,*,ppp:int=',**t:OPEN',p=True,op:Dict[int,List[float]]={1:[.5]}):",
+        "def f(data:str)->List[str]:",
         "try:print(';hello:bebebe=xm;')",
         "finally:print(a+'=')",
         "a:PyLight=5;b:PyLight=5",
@@ -49,6 +53,8 @@ def test_delete_annotations():
         "async def my_super_f(xe):pass",
         "async def my_super_f(xe=15,n,*r,ppp=',t:OPEN[in):',p=True,op,**):pr(',k):')",
         "async def my_super_f(xe=15,n,*,ppp=',**t:OPEN',p=True,op={1:[.5]}):",
+        "def my_super_f(xe=15,n,*,ppp=',**t:OPEN',p=True,op={1:[.5]}):",
+        "def f(data):",
         "try:print(';hello:bebebe=xm;')",
         "finally:print(a+'=')",
         "a=5;b=5",
@@ -142,10 +148,54 @@ def test_rename_locals():
 
 
 def test_convert_base():
-    from random import randint
-
     for i in range(100):
         n = randint(0, 10**10)
         base = randint(2, 32)
 
         assert int(postprocessing._convert_base(n, base), base) == n
+
+
+def test_fragment():
+    string = 'my super mega long string!!!'
+
+    for i in range(len(string) // 2):
+        # фрагмент с левого краю
+        fr = postprocessing.Fragment(string, 0 if i % 2 == 0 else None, i)
+        assert str(fr) == string[:i] == fr.value
+        fr.value += 'xe'
+        assert fr.value == string[:i] + 'xe'
+        assert fr.update(string) == string[:i] + 'xe' + string[i:]
+        del fr.value
+        assert fr.update(string) == string[i:]
+
+        # фрагмент с правого краю
+        fr = postprocessing.Fragment(string, i, len(string) if i % 3 == 0 else None)
+        assert str(fr) == string[i:] == fr.value
+        fr.value += 'xe'
+        assert fr.value == string[i:] + 'xe'
+        assert fr.update(string) == string + 'xe'
+        del fr.value
+        assert fr.update(string) == string[:i]
+
+        # пустой фрагмент
+        fr = postprocessing.Fragment(string, i, i)
+        assert str(fr) == '' == fr.value
+        assert fr.update(string) == string
+        fr.value += 'xe'
+        assert fr.value == 'xe'
+        assert fr.update(string) == string[:i] + 'xe' + string[i:]
+        del fr.value
+        assert fr.update(string) == string
+
+        # случайный фрагмент
+        if len(string) - i > 3:
+            end = randint(i, len(string))
+
+            fr = postprocessing.Fragment(string, i, end)
+            assert str(fr) == string[i:end] == fr.value
+            fr.value += 'xe'
+            fr.value = fr.value.upper()
+            assert fr.value == string[i: end].upper() + 'XE'
+            assert fr.update(string) == string[:i] + string[i: end].upper() + 'XE' + string[end:]
+            del fr.value
+            assert fr.update(string) == (string[:i] + string[end:])
