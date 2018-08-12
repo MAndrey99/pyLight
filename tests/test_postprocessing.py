@@ -29,14 +29,14 @@ def test_delete_annotations():
         "da:Dict[function, int]",
         "da:function.magic._Da_",
         "da+=1",
-        "da=15",
+        "da=15;da+=1",
         "____:Magic if da else not Magic=1771717175**16.f('gg')",
         "async def my_super_f(xe):pass",
         "async def my_super_f(xe:Sum_type=15,n:int.___,*r,ppp:int=',t:OPEN[in):',p=True,op:List[int],**):pr(',k):')",
         "async def my_super_f(xe:Sum_type=15,n:int._,*,ppp:int=',**t:OPEN',p=True,op:Dict[int,List[float]]={1:[.5]}):",
         "try:print(';hello:bebebe=xm;')",
         "finally:print(a+'=')",
-        # "a:PyLight=5;b:PyLight=5",
+        "a:PyLight=5;b:PyLight=5",
     ]
 
     data_out = [
@@ -44,14 +44,14 @@ def test_delete_annotations():
         "if a>b:a,b=b,a",
         "else:c=5",
         "da+=1",
-        "da=15",
+        "da=15;da+=1",
         "____=1771717175**16.f('gg')",
         "async def my_super_f(xe):pass",
         "async def my_super_f(xe=15,n,*r,ppp=',t:OPEN[in):',p=True,op,**):pr(',k):')",
         "async def my_super_f(xe=15,n,*,ppp=',**t:OPEN',p=True,op={1:[.5]}):",
         "try:print(';hello:bebebe=xm;')",
         "finally:print(a+'=')",
-        # "a=5;b=5",  # TODO: FIX!!!
+        "a=5;b=5",
     ]
 
     postprocessing.delete_annotations(data_in)

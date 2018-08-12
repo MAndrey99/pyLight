@@ -1,5 +1,5 @@
 import re
-from typing import List
+from typing import List, Iterator
 from operator import getitem
 from functools import partial
 from io import StringIO
@@ -58,13 +58,13 @@ def delete_annotations(data: List[str]):
 
     i = 0  # номер строки кода, которую обрабатываем
     while i < len(data):
-        mask, _ = _generate_mask(data[i])
 
         t = data[i].lstrip()
         if t.startswith('def ') or t.startswith('async def'):
             # удаляем аннотации функциии
             # ! данный метод не поддерживает функции и любые другие вырожения
             search_start = data[i].find('(') + 1
+            mask, _ = _generate_mask(data[i])
 
             # ищем конец функции
             t = len(data[i])
@@ -76,8 +76,6 @@ def delete_annotations(data: List[str]):
 
                 t = search_end - 2
             del t
-
-            mask, _ = _generate_mask(data[i])
 
             # в цикле находим и удаляем все анотации
             while True:
@@ -111,49 +109,56 @@ def delete_annotations(data: List[str]):
                         search_end -= p - match.start()
                 else:
                     search_start = match.end()
-        elif reg_annotation.match(t):
-            def get_colon_pos() -> int:
-                """возвращает положения симвала ':' пред аннотацией или -1"""
+        else:
+            for it in _commands(data, i):
+                mask, _ = _generate_mask(it.value)
 
-                n = 0
-                colon_pos = -1
+                if reg_annotation.match(it.value):
+                    def get_colon_pos() -> int:
+                        """возвращает положения симвала ':' пред аннотацией или -1"""
 
-                while n < len(data[i]):
-                    while data[i][n] != ':' and n < len(data[i]):
-                        n += 1
+                        n = 0
+                        colon_pos = -1
 
-                    var_name = data[i][colon_pos + 1: n]
-                    colon_pos = n
+                        while n < len(it.value):
+                            while it.value[n] != ':' and n < len(it.value):
+                                n += 1
 
-                    if var_name not in ['try', 'else', 'finally'] and reg_var.match(var_name):
-                        break
+                            var_name = it.value[colon_pos + 1: n]
+                            colon_pos = n
 
-                    if not reg_annotation.match(data[i][colon_pos + 1:]):
-                        return -1
+                            if var_name not in ['try', 'else', 'finally'] and reg_var.match(var_name):
+                                break
 
-                    n += 1
+                            if not reg_annotation.match(it.value[colon_pos + 1:]):
+                                return -1
 
-                return colon_pos
+                            n += 1
 
-            eq_pos = None
-            colon_pos = get_colon_pos()
+                        return colon_pos
 
-            if colon_pos != -1:
-                # ищем знак равно так чтобы не среагировать на операторы <=, !=, == и тд., а так же на строки
-                for j in range(colon_pos, len(mask)):
-                    if not mask[j]:
-                        if data[i][j] == '=' and data[i][j + 1] not in '<>!=' and data[i][j - 1] not in '<>!=':
-                            eq_pos = j
-                            break
+                    eq_pos = None
+                    colon_pos = get_colon_pos()
 
-                # если эта строчка чисто аннотация, то её надо удалить!
-                if eq_pos is None:
-                    del data[i]
-                    continue
+                    if colon_pos != -1:
+                        # ищем знак равно так чтобы не среагировать на операторы <=, !=, == и тд., а так же на строки
+                        for j in range(colon_pos, len(mask)):
+                            if not mask[j]:
+                                if it.value[j] == '=' and it.value[j + 1] not in '<>!=' and it.value[j - 1] not in '<>!=':
+                                    eq_pos = j
+                                    break
 
-                data[i] = data[i][:colon_pos] + data[i][eq_pos:]  # вырезаем саму аннотацию
+                        # если эта строчка чисто аннотация, то её надо удалить!
+                        if eq_pos is None:
+                            del it.value
+                            continue
 
-        i += 1
+                        it.value = it.value[:colon_pos] + it.value[eq_pos:]  # вырезаем саму аннотацию
+
+        if data[i]:
+            i += 1
+        else:
+            del data[i]
 
 
 def _arguments(definition: str, have_annotations: bool) -> List[str]:
@@ -188,6 +193,62 @@ def _arguments(definition: str, have_annotations: bool) -> List[str]:
     return list(map(lambda x: x if '=' not in x else x[:x.find('=')], with_eq))  # удераем значения по умолчанию
 
 
+class Fragment:
+    __slots__ = ("_value", "_start", "_end")
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        self._value = value
+
+    @value.deleter
+    def value(self):
+        self._value = ''
+
+    def update(self, line):
+        return (line[:self._start] if self._start else '') + self._value + (line[self._end:] if self._end else '')
+
+    def __init__(self, line, _start=None, _end=None):
+        self._value = line[_start: _end]
+        self._start, self._end = _start, _end
+
+    def __str__(self):
+        return self._value
+
+
+def _commands(data: List[str], index: int) -> Iterator[Fragment]:
+    """разбиваем строку на выражения типа: a+=1;print(a) -> a+=1 и print(a)"""
+    assert data[index].lstrip()
+
+    begin = 0  # начало рассматривоемого вырожения
+    while data[index][begin] == ' ':
+        begin += 1
+
+    mask, _ = _generate_mask(data[index])
+
+    i = begin
+    while True:
+        if data[index][i] == ';' and not mask[i]:
+            fragment = Fragment(data[index], begin, i)
+            yield fragment
+            i += len(fragment.value) - fragment._end + fragment._start
+
+            data[index] = fragment.update(data[index])
+            begin = i + 1
+
+        i += 1
+
+        if i >= len(data[index]):
+            break
+
+    fragment = Fragment(data[index], begin)
+    yield fragment
+    data[index] = fragment.update(data[index])
+
+
 def rename_locals(data: List[str], have_annotations=True):
     """
     переименовывает все локальные переменные в функциях
@@ -195,20 +256,6 @@ def rename_locals(data: List[str], have_annotations=True):
     :param have_annotations: возможно ли присудствие аннотаций функций в коде
     :param data: список обработанных строк кода
     """
-
-    def commands(line: str):
-        """разбиваем строку на выражения типа: a+=1;print(a) -> a+=1 и print(a)"""
-        assert line
-
-        line = line.lstrip()
-        mask, _ = _generate_mask(line)
-
-        begin = 0  # начало рассматривоемого вырожения
-        for i in range(1, len(line)):
-            if line[i] == ';' and not mask[i]:
-                yield line[begin: i]
-                begin = i + 1
-        yield line[begin:]
 
     def search(var_name: str, text: str) -> re.Match:
         """ищем переменную в строке кода"""
@@ -251,7 +298,9 @@ def rename_locals(data: List[str], have_annotations=True):
             while i < len(data) and data[i].startswith(' ' * (level + 1)):  # пока не вышли из функции
                 assert data[i]
 
-                for command in commands(data[i]):
+                for command in _commands(data, i):
+                    command = command.value  # нам не нужна тут изменять фрагменты строки data[i]
+
                     # всё, что из глобальной области видимости запоменаем и не переименовываем
                     if command.startswith('global'):
                         variables = command[7:].split(',')
@@ -285,7 +334,10 @@ def rename_locals(data: List[str], have_annotations=True):
                 i -= 1  # шаг цикла. идём назад к началу функции
 
                 # проверяем на каждой строчке наличае переменных, которые заменяются
+                it: str
                 for it in filter(partial(getitem, l_v), l_v.keys()):  # итерируемся по тем, что не None
+                    assert type(it) is str
+
                     while True:
                         match = search(it, data[i])
                         if not match:
