@@ -34,10 +34,10 @@ HELP = """
 
 
 # Настройки
-noasserts = False
+no_asserts = False
 rename_locals = False
-nonewdir = False
-ennable_annotations = False
+no_new_dir = False
+enable_annotations = False
 
 
 def process(data: str) -> str:
@@ -54,60 +54,68 @@ def process(data: str) -> str:
     core.del_spaces(data)
 
     # удаляем анотации функций
-    if not ennable_annotations:
+    if not enable_annotations:
         postprocessing.delete_annotations(data)
 
     # удаляем assert'ы
-    if noasserts:
+    if no_asserts:
         postprocessing.del_asserts(data)
 
     # пререименовываем локальные переменные
     if rename_locals:
-        postprocessing.rename_locals(data, ennable_annotations)
+        postprocessing.rename_locals(data, enable_annotations)
 
     return '\n'.join(data)
 
 
 def process_path(p: Path):
-    result_dir = None if nonewdir else Path(p / "Light")
-    if result_dir and not result_dir.is_dir(): result_dir.mkdir()  # создаём папку для результата
+    def for_each_in_dir(r_folder: Path, w_folder: Path):
+        """
+        обрабатывает все файлы в указанной дирректории
+
+        :param r_folder: папка в которой лежат исходные файлы
+        :param w_folder: папка в которую пишутся обработанные файлы
+        """
+        for it in r_folder.iterdir():
+            if it.is_dir():
+                if it.name == "Light":
+                    continue
+
+                if w_folder:
+                    w_folder /= it.name  # переходим в подпапку
+                    if not w_folder.is_dir():
+                        w_folder.mkdir()  # создаём подпапку для результата
+                for_each_in_dir(it, w_folder)
+            elif it.is_file() and it.suffix in ('.py', '.pyw'):
+                print("обработка", it.name)
+                (w_folder / it.name if w_folder else it).write_text(
+                    process(it.read_text(encoding="utf8")),
+                    encoding="utf8"
+                )
+
+    result_dir = None if no_new_dir else Path(p / "Light")  # папка с результатом работы программы
+    if result_dir and not result_dir.is_dir():
+        result_dir.mkdir()  # создаём папку для результата
 
     t = time()  # сохраняем время начала процедуры для подсчёта быстродействия
 
     if p.is_file():
         (result_dir / p.name if result_dir else p).write_text(process(p.read_text(encoding="utf8")), encoding="utf8")
     else:
-        def for_each_in_dir(dir: Path, result_dir: Path):
-            for it in dir.iterdir():
-                if it.is_dir():
-                    if it.name == "Light":
-                        continue
-
-                    if result_dir:
-                        result_dir /= it.name  # переходим в подпапку
-                        if not result_dir.is_dir(): result_dir.mkdir()  # создаём подпапку для результата
-                    for_each_in_dir(it, result_dir)
-                elif it.is_file() and it.suffix in ('.py', '.pyw'):
-                    print("обработка", it.name)
-                    (result_dir / it.name if result_dir else it).write_text(
-                                                                                process(it.read_text(encoding="utf8")),
-                                                                                encoding="utf8"
-                                                                            )
-
         for_each_in_dir(p, result_dir)
 
     print(round((time() - t) * 1000), 'ms')
 
 
 def menu():
-    global noasserts, rename_locals, nonewdir
+    global no_asserts, rename_locals, no_new_dir
 
     print(HEAD, VERSION, '\n')
 
     # выводим настройки
-    print("удаление assert'ов(1) -", noasserts)
+    print("удаление assert'ов(1) -", no_asserts)
     print("переименовывание локальных переменных(2) -", rename_locals)
-    print("создание новой директории для результата(3) -", not nonewdir)
+    print("создание новой директории для результата(3) -", not no_new_dir)
 
     print()
     print("Введите путь до нужного файла/папки или номер настройки, которую хотите изменить.")
@@ -117,11 +125,11 @@ def menu():
         if text.isdigit() and 1 <= int(text) <= 3:
             text = int(text)
             if text == 1:
-                noasserts = not noasserts
+                no_asserts = not no_asserts
             elif text == 2:
                 rename_locals = not rename_locals
             elif text == 3:
-                nonewdir = not nonewdir
+                no_new_dir = not no_new_dir
 
             system('cls' if platform == 'win32' else 'clear')
             menu()
@@ -144,7 +152,7 @@ def menu():
 
 
 def main():
-    global noasserts, rename_locals, nonewdir, ennable_annotations
+    global no_asserts, rename_locals, no_new_dir, enable_annotations
 
     if len(argv) == 1:
         menu()  # Передаём власть менюшке
@@ -159,24 +167,24 @@ def main():
         if i.startswith('-'):
             if i.startswith('--'):
                 if i[2:] == 'noasserts':
-                    noasserts = True
+                    no_asserts = True
                 elif i[2:] == 'renameVars':
                     rename_locals = True
                 elif i[2:] == 'nonewdir':
                     rename_locals = True
                 elif i[2:] == 'enable_annotations':
-                    ennable_annotations = True
+                    enable_annotations = True
             else:
                 assert len(i) >= 2
                 i = i[1:]
 
                 while i:
                     if i[0] == 'a':
-                        noasserts = True
+                        no_asserts = True
                     elif i[0] == 'r':
                         rename_locals = True
                     elif i[0] == 'd':
-                        nonewdir = True
+                        no_new_dir = True
                     else:
                         print(f"Передан неверный ключ!({i[0]})")
                         return

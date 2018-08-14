@@ -136,8 +136,8 @@ def delete_annotations(data: List[str]):
                     def get_colon_pos() -> int:
                         """возвращает положения симвала ':' пред аннотацией или -1"""
 
-                        n = 0
-                        colon_pos = -1
+                        n = 0  # номер просматриеваемого симвала
+                        colon_pos = -1  # позиция симвала ':'
 
                         while n < len(it.value):
                             while it.value[n] != ':' and n < len(it.value):
@@ -147,7 +147,7 @@ def delete_annotations(data: List[str]):
                             colon_pos = n
 
                             if var_name not in ['try', 'else', 'finally'] and reg_var.match(var_name):
-                                break
+                                break  # если вместо имени переменной ключевое слово, то здесь нет аннотации
 
                             if not reg_annotation.match(it.value[colon_pos + 1:]):
                                 return -1

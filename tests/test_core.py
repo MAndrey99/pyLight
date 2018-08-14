@@ -52,6 +52,7 @@ def test_del_spaces():
         (["from  logging import ERROR, INFO"], ["from logging import ERROR,INFO"]),
         (["if __name__ == __main__: "], ["if __name__==__main__:"]),
         (["    hello = ' hello  \\\\' + 'a'", "   t  +=1 "], ["    hello=' hello  \\\\'+'a'", "   t+=1"]),
+        (['a = f"hello, { name + t }"'], ['a=f"hello, {name+t}"']),
         (
             [" h = ' t  + ab t' + '''sde ' ddd'' dq '' e' '''", ' f = """ r +  v"rre  s""" + a'],
             [" h=' t  + ab t'+'''sde ' ddd'' dq '' e' '''", ' f=""" r +  v"rre  s"""+a']
@@ -71,12 +72,12 @@ def test_optimize_str_count():
         (["class i:", " a", " b"], ["class i:", " a;b"]),
         (["a", "class B"], ["a", "class B"]),
         (["  a\\", "      b!"], ["  a b!"]),
-        (["D = {'b': '\\<bs>',", "     's\\\\': ' '}"], ["D = {'b': '\\<bs>', 's\\\\': ' '}"]),
+        (["D = {'b': '\\<bs>',", "     's\\\\': ' '}"], ["D = {'b': '\\<bs>','s\\\\': ' '}"]),
         (["for i in a:", "  r(a)", "  p(i)", "kek"], ["for i in a:", "  r(a);p(i)", "kek"]),
-        (["a = [", "   a,", "   b", "  ]"], ["a = [a, b]"]),
+        (["a = [", "   a,", "   b", "  ]"], ["a = [a,b]"]),
         (
             ["for c in (b' !',", "b'?@',", "b'\t'):", "  _[c] = chr(c)"],
-            ["for c in (b' !', b'?@', b'\t'):_[c] = chr(c)"]
+            ["for c in (b' !',b'?@',b'\t'):_[c] = chr(c)"]
         ),
         (
             ["from sys import argv", "from logging import ERROR, INFO", "LOCATION = Path(argv[0]).parent"],
@@ -126,6 +127,8 @@ def test_generate_mask():
     cases = [
         ("h e l l o# 'rrr", to_bool_array('0'*9)),
         ("a = b'yt \" w\"' + 's'", to_bool_array('(0*6)(1*7)(0*5)10')),
+        ("a = f'yt {oops} \" w\"'", to_bool_array('(0*6)(1*4)(0*4)(1*6)0')),
+        ("a = f'yt {a + ba if \"xe}\" in {1, 2, 3} else ooo}'", to_bool_array('(0*6)(1*4)(0*11)111(0*23)10')),
         ("r''' \\'\\'\\' end'''", to_bool_array('000011111111111000')),
         (r"a = '\n'+'''b\\'''+'\n'+'''c '''", to_bool_array('(0*5)11(0*5)111(0*5)11(0*5)11000')),
         ('t = b\'\\n\'+rb"""text"""+b\'\\n\'+rb"""a"""', to_bool_array('(0*6)11(0*7)1111(0*6)11(0*7)1000'))

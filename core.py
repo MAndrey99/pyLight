@@ -2,8 +2,9 @@ from typing import List, Tuple
 import re
 
 
-# разбивает файл на строки с кодом без комментариев в конце и превращает табуляцию в пробелы
 def super_split(data: str) -> List[str]:
+    """разбивает файл на строки с кодом без комментариев и превращает табуляцию в пробелы"""
+
     data = [i.rstrip().replace('\t', ' ') for i in data.replace('\\\n', '').split('\n')]
 
     # удаляем комментарии
@@ -46,8 +47,9 @@ def super_split(data: str) -> List[str]:
     return data
 
 
-# удаляем пробелы между операторами
 def del_spaces(data: List[str]):
+    """удаляем лишние пробелы"""
+
     def process(s: str) -> str:
         """
         Удаляет лишние пробелы из строки
@@ -56,14 +58,14 @@ def del_spaces(data: List[str]):
         :return: строка без пробелов
         """
 
-        blocks = [i for i in s.split(' ') if i]
-        res = blocks[0]
+        words = [i for i in s.split(' ') if i]  # фрагменты текста без пробелов
+        res = words[0]
 
-        for i in range(1, len(blocks)):
-            if (blocks[i - 1][-1].isalnum() or blocks[i - 1][-1] == '_')\
-                    and (blocks[i][0].isalnum() or blocks[i][0] == '_'):
+        for i in range(1, len(words)):
+            if (words[i - 1][-1].isalnum() or words[i - 1][-1] == '_')\
+                    and (words[i][0].isalnum() or words[i][0] == '_'):
                 res += ' '
-            res += blocks[i]
+            res += words[i]
 
         return res
 
@@ -72,28 +74,35 @@ def del_spaces(data: List[str]):
 
         # ищем уровень записи
         level = 0
-        while data[i][level] == ' ': level += 1
+        while data[i][level] == ' ':
+            level += 1
         data[i] = data[i][level:]
 
         # разбиваем на фрагменты и удаляем пробелы вне строк
         mask, _ = _generate_mask(data[i])
-        blocks = []
+        blocks = []  # фрагменты строки, где либо всё в строке либо нет
         last_block_end = 0
         j = 0
         while j < len(mask):
+            # ищем границу со строкой
             j += 1
-            while j < len(mask) and mask[j - 1] == mask[j]: j += 1
+            while j < len(mask) and mask[j - 1] == mask[j]:
+                j += 1
+
             blocks.append(data[i][last_block_end: j])
-            if not mask[j - 1]: blocks[-1] = process(blocks[-1])
             last_block_end = j
+
+            if not mask[j - 1]:  # если фрагмент не в строке
+                blocks[-1] = process(blocks[-1])  # удаляем лишние пробелы в фрагменте
 
         # получаем результат
         data[i] = ' ' * level + ''.join(blocks)
 
 
-# многострочные строки соединяет в одну линию с помощью добавления '\n'
 def update_multiline_strings(data: List[str]):
-    def unfs(s: str) -> Tuple[str, str]:
+    """многострочные строки соединяет в одну линию с помощью добавления '\n'"""
+
+    def unfs(string: str) -> Tuple[str, str]:
         """
         превращает строки типа f't e x {value(:.*?)?} t' в строки типа 't e x {(:.*?)?} t'.format(value)
 
@@ -102,53 +111,55 @@ def update_multiline_strings(data: List[str]):
         """
 
         # удаляем обозначение f-строки
-        assert (s[0] == 'f') ^ (s[1] == 'f')
-        s = s.replace('f', '', 1)
+        assert (string[0] == 'f') ^ (string[1] == 'f')
+        string = string.replace('f', '', 1)
 
         reg = re.compile(r'{(?![:}])(?P<var_name>.*?)(?::.*?)?}')
-        match = reg.search(s)
+        match = reg.search(string)
 
         if not match:
-            return s, ''  # Вернём всё как есть
+            return string, ''  # Вернём всё как есть
         else:
             postfix = '.format('
 
         # проходя по всем позициям будем убирать значения и переносить их в аргументы метода format
         while match:
-            s = s[:match.start('var_name')] + s[match.end('var_name'):]
+            string = string[:match.start('var_name')] + string[match.end('var_name'):]
             postfix += match.group('var_name') + ','
-            match = reg.search(s)
+            match = reg.search(string)
 
-        return s, postfix[:-1] + ')'
+        return string, postfix[:-1] + ')'
 
     i = 0  # номер строки на которой мы находимся
     while i < len(data):
         mask, s = _generate_mask(data[i])
 
-        if s and len(s) >= 3 and i + 1 < len(data):  # если есть многострочная строка
+        if s:  # если строка многострочная
+            assert len(s) >= 3 and i + 1 < len(data)
+
             # ищем закрывающие симвалы
             begin = data[i].find(s)  # начало строки
 
-            g = i + 1
-            mask, _ = _generate_mask(data[g], s)
+            j = i + 1
+            mask, _ = _generate_mask(data[j], s, False)
 
-            while all(mask):  # пока все исмвалы находятся в коментарии
-                g += 1
-                mask, _ = _generate_mask(data[g], s)
+            while all(mask):  # пока все смвалы находятся в коментарии
+                j += 1
+                mask, _ = _generate_mask(data[j], s, False)
 
             end = mask.index(False) + 3  # конец закрывающих симвалов
 
             # получаем итоговую строку
             string = data[i][begin:] + ('\n' if len(data[i]) == begin + len(s) else '') \
-                     + '\n'.join([data[i] for i in range(i + 1, g)]) + '\n' + data[g][:end]
+                                     + '\n'.join([data[i] for i in range(i + 1, j)]) + '\n' + data[j][:end]
             if 'f' in s:  # f-string
                 string, postfix = unfs(string)
             else:
                 postfix = ''  # тут то, что не должно попасть в eval и находится в конце пр: .format(...) для f-строк
             string = repr(eval(string)) + postfix
 
-            # удаляем строки между i и g
-            for _ in range(1, g - i):
+            # удаляем строки между i и j
+            for _ in range(1, j - i):
                 del data[i + 1]
 
             # удаляем старую строку и обьединяем строки с новой
@@ -159,9 +170,10 @@ def update_multiline_strings(data: List[str]):
             i += 1
 
 
-# обьединяет строки если это возможно
 def optimize_str_count(data: List[str]):
-    def joinable(a: str, b: str, c: str) -> int:
+    """обьединяет строки если это возможно"""
+
+    def is_joining(a: str, b: str, c: str) -> int:
         """
         :param a: трока к которой мы хотим потсоединить b
         :param b: подсоединяемая строка
@@ -171,8 +183,10 @@ def optimize_str_count(data: List[str]):
         """
 
         # проверка на вхождение в литералы коллекций и прочую фигню(например параметры функций)
-        if a[-1] in "({[,": return 3
-        if b and b.lstrip()[0] in ")]}": return 3
+        if a[-1] in "({[,":
+            return 3
+        if b and b.lstrip()[0] in ")]}":
+            return 3
 
         # проверка на логические вырожения
         if len(a) >= 3:
@@ -181,46 +195,46 @@ def optimize_str_count(data: List[str]):
                 return 2
 
         # считаем их уровни уровни
-        levels = [0, 0, 0]
+        levels = [0, 0, 0]  # количество пробелов перед строками a, b, c
         for n, it in enumerate((a, b, c)):
             if it:
-                while it[levels[n]] == ' ': levels[n] += 1
+                while it[levels[n]] == ' ':
+                    levels[n] += 1
 
         # проверка на наличае ключевых слов
         keywords = ("class", "def", "for", "while", "if", "else", "try", "except", "finally", '@')
-        a_spec = False
+        a_spec = False  # является ли a ключевым словом
         for i in keywords:
             if b.lstrip().startswith(i):
                 return 0
             elif a.lstrip().startswith(i):
                 a_spec = True
 
-        if not a_spec:
+        if not a_spec:  # если a - ключевое слово
             return int(levels[0] == levels[1])
         elif levels[2] < levels[1] and levels[0] < levels[1] and a.rstrip()[-1] == ':':
+            # b - единственная строка в блоке кода
             return 3
         else:
             return 0
 
-    i = 1
+    i = 1  # номер строки
     while i < len(data):
         assert data[i]
-        if data[i - 1][-1] == '\\':
+
+        if data[i - 1][-1] == '\\':  # если строка под номером i это продолжение предыдущей
             data[i - 1] = data[i - 1][:-1] + ' ' + data[i].lstrip()
             del data[i]
-        elif data[i - 1][-1] == ',':
-            data[i - 1] = data[i - 1] + ' ' + data[i].lstrip()
-            del data[i]
         else:
-            t = joinable(data[i - 1], data[i], data[i + 1] if i + 1 < len(data) else '')
+            t = is_joining(data[i - 1], data[i], data[i + 1] if i + 1 < len(data) else '')
             if t != 0:
-                data[i - 1] += (';' if t == 1 else (' ' if t == 2 else '')) + data[i].lstrip()
+                data[i - 1] += (';', ' ', '')[t - 1] + data[i].lstrip()
                 del data[i]
             else:
                 i += 1
 
 
-def _generate_mask(arg: str, s: str=None) -> Tuple[List[bool], str]:
+def _generate_mask(arg: str, s: str=None, as_f_string=True) -> Tuple[List[bool], str]:
     """
     :param arg: строка для генерации маски
     :param s: строка из симвала(ов), открывающих строку. (передавать если
@@ -235,20 +249,61 @@ def _generate_mask(arg: str, s: str=None) -> Tuple[List[bool], str]:
     is_raw = s and 'r' in s
     is_binary = s and 'b' in s
     is_format = s and 'f' in s
-    s = s and ''.join(filter(lambda x: x in '\'"', s))
+    s = s and ''.join(filter(lambda x: x in '\'"', s))  # удаляем из s все симвалы кроме ' и "
 
-    res = [False for _ in range(len(arg))]
+    res = [False for _ in range(len(arg))]  # маска, которую возвращаем
     i = 0
     while i < len(arg):
         if s:
             k = 0  # количество знаков r'\' перед симвалом
-            while i - k > 0 and arg[i - k - 1] == '\\': k += 1
+            while i - k > 0 and arg[i - k - 1] == '\\':
+                k += 1
 
-            if k % 2 == 0:
-                if arg[i: i + 3].startswith(s):
+            if k % 2 == 0:  # если симвал arg[i] не экранирован
+                if arg[i: i + 3].startswith(s):  # если на позиции i закрытие строки
                     i += len(s)
                     s = is_raw = is_binary = is_format = None
                     continue
+
+                if as_f_string and is_format and arg[i] == '{':
+                    # обозначим найденое вырожение не как часть строки
+                    res[i] = True
+
+                    ss = ''  # симвал(ы) открытой строки
+                    n = 0  # количество незакрытых фигурных скобочек
+                    while i < len(arg):
+                        i += 1
+
+                        if arg[i] in ('"', "'"):
+                            assert arg[i] not in s
+
+                            if ss:
+                                if len(ss) == 3:
+                                    if arg[i + 1] == arg[i + 2] == arg[i]:
+                                        ss = ''
+                                        i += 2
+                                    else:
+                                        res[i] = True
+                                else:
+                                    assert len(ss) == 1
+                                    ss = ''
+                            else:
+                                if arg[i + 1] == arg[i + 2] == arg[i]:
+                                    ss = arg[i] * 3
+                                    i += 2
+                                else:
+                                    ss = arg[i]
+                        elif ss:
+                            res[i] = True
+                        elif arg[i] == '}':
+                            if n == 0:
+                                res[i] = True
+                                break
+                            else:
+                                n -= 1
+                        elif arg[i] == '{':
+                            n += 1
+
         elif arg[i] in ('"', "'"):
             if i > 0 and arg[i - 1].isalpha():
                 is_raw = arg[i - 1] == 'r'
@@ -270,7 +325,7 @@ def _generate_mask(arg: str, s: str=None) -> Tuple[List[bool], str]:
                 i += 1
 
             continue
-        elif arg[i] == '#':
+        elif arg[i] == '#':  # не делаем маску на комментарии
             res = res[:i]
             break
 
@@ -282,7 +337,7 @@ def _generate_mask(arg: str, s: str=None) -> Tuple[List[bool], str]:
     assert (s is None) ^ (is_raw is not None and is_binary is not None and is_format is not None)
     assert not is_binary or not is_format
 
-    _generate_mask.LAST_S = s = 'r'*int(is_raw) + 'f'*int(is_format) + 'b'*int(is_binary) + s if s else None
+    _generate_mask.LAST_S = s = f"{'r'*is_raw}{'f'*is_format}{'b'*is_binary}{s}" if s else None
     return res, s
 
 

@@ -88,40 +88,42 @@ def test_arguments():
 
 def test_rename_locals():
     case = \
-([
-    ' SUPER_TRUE,T=True,Temp',
-    ' def super_func(yey:bool,*,xex=SUPER_TRUE,**kwargs):',
-    '     t=yey-xex',
-    '     async def megafunc(xex=yey,moo:List[int]=t):',
-    '         if SUPER_TRUE:xex:int=yey',
-    '         else:t:str=5',
-    '         y,*_,xex=yey+";moo=k";moo:List[int]=t+k',
-    '     k:int=megafunc',
-    ' def f2():',
-    '     global SUPER_TRUE',
-    '     false=False',
-    '     SUPER_TRUE=false',
-    '     return SUPER_TRUE or false'
-], [
-    ' SUPER_TRUE,T=True,Temp',
-    ' def super_func(yey:bool,*,xex=SUPER_TRUE,**kwargs):',
-    '     <hash0>=yey-xex',
-    '     async def megafunc(xex=yey,<hash1>:List[int]=<hash0>):',
-    '         if SUPER_TRUE:xex:int=yey',
-    '         else:<hash0>:str=5',
-    '         <hash4>,*_,xex=yey+";moo=k";<hash1>:List[int]=<hash0>+<hash2>',
-    '     <hash2>:int=megafunc',
-    ' def f2():',
-    '     global SUPER_TRUE',
-    '     <hash3>=False',
-    '     SUPER_TRUE=<hash3>',
-    '     return SUPER_TRUE or <hash3>'
-])
+        ([
+            ' SUPER_TRUE,T=True,Temp',
+            ' def super_func(yey:bool,*,xex=SUPER_TRUE,**kwargs):',
+            '     t=yey-xex',
+            '     print(f"{string[:t.sum_method()]} xexexe")',
+            '     async def megafunc(xex=yey,moo:List[int]=t):',
+            '         if SUPER_TRUE:xex:int=yey',
+            '         else:t:str=5',
+            '         y,*_,xex=yey+";moo=k";moo:List[int]=t+k',
+            '     k:int=megafunc',
+            ' def f2():',
+            '     global SUPER_TRUE',
+            '     false=False',
+            '     SUPER_TRUE=false',
+            '     return SUPER_TRUE or false'
+        ], [
+            ' SUPER_TRUE,T=True,Temp',
+            ' def super_func(yey:bool,*,xex=SUPER_TRUE,**kwargs):',
+            '     <hash0>=yey-xex',
+            '     print(f"{string[:<hash0>.sum_method()]} xexexe")',
+            '     async def megafunc(xex=yey,<hash1>:List[int]=<hash0>):',
+            '         if SUPER_TRUE:xex:int=yey',
+            '         else:<hash0>:str=5',
+            '         <hash4>,*_,xex=yey+";moo=k";<hash1>:List[int]=<hash0>+<hash2>',
+            '     <hash2>:int=megafunc',
+            ' def f2():',
+            '     global SUPER_TRUE',
+            '     <hash3>=False',
+            '     SUPER_TRUE=<hash3>',
+            '     return SUPER_TRUE or <hash3>'
+        ])
     postprocessing.rename_locals(case[0])
 
     # так как при каждом запуске питона хэши разные неоьзя просто сравнивать строки
     reg = re.compile(r'<hash(?P<number>\d)>')
-    hashs = dict()  # здесь храним хэши. номер(симвал) - значение
+    hashes = dict()  # здесь храним хэши. номер(симвал) - значение
 
     for a, b in zip(*case):
         while True:
@@ -130,7 +132,7 @@ def test_rename_locals():
             if not match:
                 break
 
-            if match.group('number') not in hashs.keys():  # если хэш с этим номером видим в первый раз
+            if match.group('number') not in hashes.keys():  # если хэш с этим номером видим в первый раз
                 t = ''  # хэшь, на этом
                 i = match.start()
 
@@ -139,10 +141,10 @@ def test_rename_locals():
                     i += 1
 
                 assert t[0] == '_'
-                hashs[match.group('number')] = t
+                hashes[match.group('number')] = t
 
             # заменяем <hash> на настоящий хэш
-            b = b[:match.start()] + hashs[match.group('number')] + b[match.end():]
+            b = b[:match.start()] + hashes[match.group('number')] + b[match.end():]
 
         assert a == b
 
