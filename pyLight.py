@@ -89,9 +89,9 @@ def process_path(p: Path):
             elif it.is_file() and it.suffix in ('.py', '.pyw'):
                 print("обработка", it.name)
                 (w_folder / it.name if w_folder else it).write_text(
-                    process(it.read_text(encoding="utf8")),
-                    encoding="utf8"
-                )
+                                                                        process(it.read_text(encoding="utf-8-sig")),
+                                                                        encoding="utf-8-sig"
+                                                                   )
 
     result_dir = None if no_new_dir else Path(p / "Light")  # папка с результатом работы программы
     if result_dir and not result_dir.is_dir():
@@ -100,7 +100,10 @@ def process_path(p: Path):
     t = time()  # сохраняем время начала процедуры для подсчёта быстродействия
 
     if p.is_file():
-        (result_dir / p.name if result_dir else p).write_text(process(p.read_text(encoding="utf8")), encoding="utf8")
+        (result_dir / p.name if result_dir else p).write_text(
+                                                                process(p.read_text(encoding="utf-8-sig")),
+                                                                encoding="utf-8-sig"
+                                                             )
     else:
         for_each_in_dir(p, result_dir)
 
