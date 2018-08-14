@@ -90,7 +90,7 @@ def test_rename_locals():
     case = \
         ([
             ' SUPER_TRUE,T=True,Temp',
-            ' def super_func(yey:bool,*,xex=SUPER_TRUE,**kwargs):',
+            ' def super_func(yey:bool,*,xex=SUPER_TRUE,**kwargs)->xex:',
             '     t=yey-xex',
             '     print(f"{string[:t.sum_method()]} xexexe")',
             '     async def megafunc(xex=yey,moo:List[int]=t):',
@@ -105,7 +105,7 @@ def test_rename_locals():
             '     return SUPER_TRUE or false'
         ], [
             ' SUPER_TRUE,T=True,Temp',
-            ' def super_func(yey:bool,*,xex=SUPER_TRUE,**kwargs):',
+            ' def super_func(yey:bool,*,xex=SUPER_TRUE,**kwargs)->xex:',
             '     <hash0>=yey-xex',
             '     print(f"{string[:<hash0>.sum_method()]} xexexe")',
             '     async def megafunc(xex=yey,<hash1>:List[int]=<hash0>):',

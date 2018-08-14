@@ -186,8 +186,6 @@ def _arguments(definition: str, have_annotations: bool) -> List[str]:
 
     :param definition: строка с обьявлением функции без пробельных симвалов в начале
     """
-    assert definition.endswith('):')
-
     if definition.startswith('async'):
         definition = definition[6:]
 

@@ -25,7 +25,7 @@ __ _/ | /  \
 
 HELP = """
 ключевые параметры:  
-'--enable_annotations'  # не удалять анотации функций
+'--enable_annotations'  - не удалять анотации функций
 --noasserts или -a  -  все assert'ы будут удалены из кода.
 --rename    или -r  - все имена локальных переменных будут изменены.
 --nonewdir  или -d  - все изменённые файлы/директории записываются взамен старых.
@@ -93,7 +93,8 @@ def process_path(p: Path):
                                                                         encoding="utf-8-sig"
                                                                    )
 
-    result_dir = None if no_new_dir else Path(p / "Light")  # папка с результатом работы программы
+    # создаём папку для результатоа работы программы
+    result_dir = None if no_new_dir else Path((p.parent if p.is_file() else p) / "Light")
     if result_dir and not result_dir.is_dir():
         result_dir.mkdir()  # создаём папку для результата
 
@@ -123,6 +124,7 @@ def menu():
     print()
     print("Введите путь до нужного файла/папки или номер настройки, которую хотите изменить.")
 
+    # обработка ввода
     while True:
         text = input('> ')
         if text.isdigit() and 1 <= int(text) <= 3:
