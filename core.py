@@ -6,7 +6,7 @@ import re
 def super_split(data: str) -> List[str]:
     """разбивает файл на строки с кодом без комментариев и превращает табуляцию в пробелы"""
 
-    data = [i.rstrip().replace('\t', ' ') for i in data.replace('\\\n', '').split('\n')]
+    data = [i.rstrip().replace('\t', ' ') for i in data.split('\n')]
 
     # удаляем комментарии
     i = 0
@@ -144,15 +144,14 @@ def update_multiline_strings(data: List[str]):
             j = i + 1
             mask, _ = _generate_mask(data[j], s, False)
 
-            while all(mask):  # пока все смвалы находятся в коментарии
+            while all(mask):  # пока все смвалы находятся в литерале строки
                 j += 1
                 mask, _ = _generate_mask(data[j], s, False)
 
             end = mask.index(False) + 3  # конец закрывающих симвалов
 
             # получаем итоговую строку
-            string = data[i][begin:] + ('\n' if len(data[i]) == begin + len(s) else '') \
-                                     + '\n'.join([data[i] for i in range(i + 1, j)]) + '\n' + data[j][:end]
+            string = data[i][begin:] + '\n' + '\n'.join([data[i] for i in range(i + 1, j)]) + '\n' + data[j][:end]
             if 'f' in s:  # f-string
                 string, postfix = unfs(string)
             else:

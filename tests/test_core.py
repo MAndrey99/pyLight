@@ -22,7 +22,7 @@ def to_bool_array(string: str):
 def test_super_split():
     cases = [
         ("a\nb \n\tc\n", ['a', 'b', ' c']),
-        ("\n\t\t\n\n\t\ta,b\\\n\n\n", ['  a,b']),
+        ("\n\t\t\n\n\t\ta,b\n\n\n", ['  a,b']),
         ("  '''\n\n # heh'''\n\n  # comment \n  text\n\n  r\"\"\"  # heh\"\"\"", ['  text']),
         ("'# \\'#\\' #'", ["'# \\'#\\' #'"]),
         ("'# ' + '#\\\\' #", ["'# ' + '#\\\\'"]),
@@ -35,7 +35,6 @@ def test_super_split():
         ("sdfr\n'''sdfr7890(*&/* ss\t({'''", ["sdfr"]),
         ("ss\\n'''s'''", ["ss\\n'''s'''"]),
         ("r'''ooo ye'''\nxaxa\nr'''xxx'''\n", ["xaxa"]),
-        ('if a or\\\n    b == 0: ...', ['if a or    b == 0: ...']),
         ('r"""oooo o"""\ntext:\n\n  r"""t\n\n"""\n  a = 5', ["text:", "  a = 5"]),
         ('a = """\nxe\n"""\nb = """\n"""', ['a = """', 'xe', '"""', 'b = """', '"""']),
         ('a # ee"\n\n\n', ['a'])
@@ -114,7 +113,8 @@ def test_update_multiline_strings():
         (['t = r"""', '', '\\ten"""'], ["t = '\\n\\n\\\\ten'"]),
         (['t = rb"""', '"text"', 'a""".replace(a, "xe")'], ['t = b\'\\n"text"\\na\'.replace(a, "xe")']),
         (["t = f'''", "text{value:.2f}text2", "xa", "'''[1:]"], ["t = '\\ntext{:.2f}text2\\nxa\\n'.format(value)[1:]"]),
-        (["t = rf'''\\n", "{a if a else b}", "'''"], ["t = '\\\\n{}\\n'.format(a if a else b)"])
+        (["t = rf'''\\n", "{a if a else b}", "'''"], ["t = '\\\\n\\n{}\\n'.format(a if a else b)"]),
+        (["t = r'''\\", "text\\", "end'''"], ["t = '\\\\\\ntext\\\\\\nend'"]),
     ]
 
     for i, j in cases:
