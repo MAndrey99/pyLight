@@ -9,7 +9,7 @@ from core import _generate_mask
 
 def del_asserts(data: List[str]):
     """
-    заменяет все assert'ы на "pass"
+    заменяет все assert'ы на "pass" или удаляем их
 
     :param data: список обработанных строк кода
     """
@@ -26,11 +26,18 @@ def del_asserts(data: List[str]):
         # заменяем все, что находим на pass
         while match:
             if not mask[match.start()]:
-                data[i] = f'{data[i][:match.start()]}pass{data[i][match.end():]}'  # заменяем то что нашли на pass
+                if match.start() > 0 and data[i][match.start() - 1] == ';':
+                    data[i] = data[i][:match.start()-1] + data[i][match.end():]  # удаляем то что нашли и ';'
+                    match = reg.search(data[i], pos=match.start())
+                elif len(data[i]) > match.end() and data[i][match.end()] == ';':
+                    data[i] = data[i][:match.start()] + data[i][match.end() + 1:]  # удаляем то что нашли и ';'
+                    match = reg.search(data[i], pos=match.start())
+                else:
+                    data[i] = f'{data[i][:match.start()]}pass{data[i][match.end():]}'  # заменяем то что нашли на pass
+                    match = reg.search(data[i], pos=match.start() + 4)
+
                 mask, s = _generate_mask(data[i])  # обновляем маску
                 assert not s
-
-                match = reg.search(data[i], pos=match.start() + 4)
             else:
                 match = reg.search(data[i], pos=match.end())
 

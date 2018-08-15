@@ -202,7 +202,7 @@ def optimize_str_count(data: List[str]):
                     levels[n] += 1
 
         # проверка на наличае ключевых слов
-        keywords = ("class", "def", "for", "while", "if", "else", "try", "except", "finally", '@')
+        keywords = ("class", "def", "for", "while", "if", "elif", "else", "try", "except", "finally", '@')
         a_spec = False  # является ли a ключевым словом
         for i in keywords:
             if b.lstrip().startswith(i):
@@ -210,7 +210,7 @@ def optimize_str_count(data: List[str]):
             elif a.lstrip().startswith(i):
                 a_spec = True
 
-        if not a_spec:  # если a - ключевое слово
+        if not a_spec:  # если в a - ключевое слово
             return int(levels[0] == levels[1])
         elif levels[2] < levels[1] and levels[0] < levels[1] and a.rstrip()[-1] == ':':
             # b - единственная строка в блоке кода
@@ -269,7 +269,7 @@ def _generate_mask(arg: str, s: str=None, as_f_string=True) -> Tuple[List[bool],
                     # обозначим найденое вырожение не как часть строки
                     res[i] = True
 
-                    ss = ''  # симвал(ы) открытой строки
+                    ss = 0  # количество симвалав открытой строки
                     n = 0  # количество незакрытых фигурных скобочек
                     while i < len(arg):
                         i += 1
@@ -278,21 +278,21 @@ def _generate_mask(arg: str, s: str=None, as_f_string=True) -> Tuple[List[bool],
                             assert arg[i] not in s
 
                             if ss:
-                                if len(ss) == 3:
+                                if ss == 3:
                                     if arg[i + 1] == arg[i + 2] == arg[i]:
-                                        ss = ''
+                                        ss = 0
                                         i += 2
                                     else:
                                         res[i] = True
                                 else:
-                                    assert len(ss) == 1
-                                    ss = ''
+                                    assert ss == 1
+                                    ss = 0
                             else:
                                 if arg[i + 1] == arg[i + 2] == arg[i]:
                                     ss = arg[i] * 3
                                     i += 2
                                 else:
-                                    ss = arg[i]
+                                    ss = 1
                         elif ss:
                             res[i] = True
                         elif arg[i] == '}':

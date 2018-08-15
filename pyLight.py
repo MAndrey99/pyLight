@@ -1,7 +1,7 @@
 from pathlib import Path
 from os import system
 from sys import platform, argv
-from time import time
+from time import perf_counter
 
 import core
 import postprocessing
@@ -38,6 +38,7 @@ no_asserts = False
 rename_locals = False
 no_new_dir = False
 enable_annotations = False
+show_time = False
 
 
 def process(data: str) -> str:
@@ -69,7 +70,7 @@ def process(data: str) -> str:
 
 
 def process_path(p: Path):
-    def for_each_in_dir(r_folder: Path, w_folder: Path):
+    def for_each_in_dir(r_folder: Path, w_folder: Path, add: str=''):
         """
         обрабатывает все файлы в указанной дирректории
 
@@ -77,17 +78,20 @@ def process_path(p: Path):
         :param w_folder: папка в которую пишутся обработанные файлы
         """
         for it in r_folder.iterdir():
-            if it.is_dir():
+            if it.is_dir() and it.stem[0] != '.':
                 if it.name == "Light":
                     continue
 
+                new_w_folder = w_folder
+
                 if w_folder:
-                    w_folder /= it.name  # переходим в подпапку
-                    if not w_folder.is_dir():
-                        w_folder.mkdir()  # создаём подпапку для результата
-                for_each_in_dir(it, w_folder)
+                    new_w_folder = w_folder / it.name
+                    if not new_w_folder.is_dir():
+                        new_w_folder.mkdir()  # создаём подпапку для результата
+
+                for_each_in_dir(it, new_w_folder, add + it.name + '/')
             elif it.is_file() and it.suffix in ('.py', '.pyw'):
-                print("обработка", it.name)
+                print("обработка", add + it.name)
                 (w_folder / it.name if w_folder else it).write_text(
                                                                         process(it.read_text(encoding="utf-8-sig")),
                                                                         encoding="utf-8-sig"
@@ -98,7 +102,7 @@ def process_path(p: Path):
     if result_dir and not result_dir.is_dir():
         result_dir.mkdir()  # создаём папку для результата
 
-    t = time()  # сохраняем время начала процедуры для подсчёта быстродействия
+    t = perf_counter()  # сохраняем время начала процедуры для подсчёта быстродействия
 
     if p.is_file():
         (result_dir / p.name if result_dir else p).write_text(
@@ -108,7 +112,8 @@ def process_path(p: Path):
     else:
         for_each_in_dir(p, result_dir)
 
-    print(round((time() - t) * 1000), 'ms')
+    if show_time:
+        print(round((perf_counter() - t) * 1000), 'ms')
 
 
 def menu():
@@ -154,6 +159,7 @@ def menu():
             process_path(target)
         else:
             print("Ошибка! Не верный путь.\n")
+        print()
 
 
 def main():
@@ -209,7 +215,6 @@ def main():
     for i in targets:
         assert (i.is_file() and i.suffix in ('.py', '.pyw')) or i.is_dir()
         process_path(i)
-        print('_'*10, '\n\n')
 
 
 if __name__ == "__main__":
