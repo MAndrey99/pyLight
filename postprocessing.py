@@ -4,7 +4,7 @@ from operator import getitem
 from functools import partial
 from io import StringIO
 
-from core import _generate_mask
+from core import _generate_mask, _count_left_spaces
 
 
 def del_asserts(data: List[str]):
@@ -14,7 +14,8 @@ def del_asserts(data: List[str]):
     :param data: список обработанных строк кода
     """
 
-    for i in range(len(data)):
+    i = 0
+    while i < len(data):
         mask, s = _generate_mask(data[i])
         assert not s  # все строки уже немногострочны
         assert '\n' not in data[i]
@@ -36,10 +37,17 @@ def del_asserts(data: List[str]):
                     data[i] = f'{data[i][:match.start()]}pass{data[i][match.end():]}'  # заменяем то что нашли на pass
                     match = reg.search(data[i], pos=match.start() + 4)
 
+                    if data[i].lstrip() == 'pass':
+                        del data[i]
+                        i -= 1
+                        break
+
                 mask, s = _generate_mask(data[i])  # обновляем маску
                 assert not s
             else:
                 match = reg.search(data[i], pos=match.end())
+
+        i += 1  # шаг цикла
 
 
 def _convert_base(num, to_base=62) -> str:
@@ -87,7 +95,7 @@ def delete_annotations(data: List[str]):
             while data[i][dtots_p] != ':':
                 dtots_p += 1
 
-            data[i] = data[i][:c] + data[i][dtots_p:]
+            data[i] = data[i][:c] + data[i][dtots_p:]  # вырезаем аннотацию возвращаемого значения
 
             # удаляем аннотации аргументов
             start = data[i].find('(') + 1
@@ -249,10 +257,7 @@ def _commands(data: List[str], index: int) -> Iterator[Fragment]:
     """разбиваем строку на выражения типа: a+=1;print(a) -> a+=1 и print(a)"""
     assert data[index].lstrip()
 
-    begin = 0  # начало рассматривоемого вырожения
-    while data[index][begin] == ' ':
-        begin += 1
-
+    begin = _count_left_spaces(data[index])  # начало рассматривоемого вырожения
     mask, _ = _generate_mask(data[index])
 
     i = begin
@@ -305,11 +310,9 @@ def rename_locals(data: List[str], have_annotations=True):
     while i + 1 < len(data):
         i += 1  # шаг цикла
 
-        level = 0  # количество пробелов перед def
-        while level < len(data[i]) and data[i][level] == ' ':
-            level += 1
+        level = _count_left_spaces(data[i])  # количество пробелов перед def
 
-        if (data[i].lstrip().startswith('def') or data[i].lstrip().startswith('async def'))\
+        if (data[i][level:].startswith('def') or data[i][level:].startswith('async def'))\
                 and data[i].endswith(':')\
                 and i + 1 < len(data)\
                 and data[i + 1].startswith(' ' * (level + 1)):

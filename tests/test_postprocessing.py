@@ -5,22 +5,32 @@ import postprocessing
 
 
 def test_del_asserts():
-    case1 = {
-        "from time import go;to go export time;": "from time import go;to go export time;",
-        "assert PASS": "pass",
-        "for i in range(asserto):assert a > (b if a else a.f())": "for i in range(asserto):pass",
-        "def f():if a == b:assert c;TODO()": "def f():if a == b:TODO()",
-        "a+=1;assert a<=v^c;a-=c": "a+=1;a-=c",
-        "a='assert foo'": "a='assert foo'",
-        "a='assert foo'+'assert bar'": "a='assert foo'+'assert bar'",
-        "  assert True is False, not got;a+=1;pass": "  a+=1;pass",
-        "i,s=core._generate_mask(i);assert not s;assert False": "i,s=core._generate_mask(i)"
-    }
+    data_in = [
+        "from time import go;to go export time;",
+        "assert PASS",
+        "for i in range(asserto):assert a > (b if a else a.f())",
+        "def f():if a == b:assert c;TODO()",
+        "a+=1;assert a<=v^c;a-=c",
+        "a='assert foo'",
+        "a='assert foo'+'assert bar';assert baz",
+        "  assert True is False, not got;a+=1;pass",
+        "i,s=core._generate_mask(i);assert not s;assert False"
+    ]
 
-    a, b = list(case1.keys()), list(case1.values())
-    postprocessing.del_asserts(a)
+    data_out = [
+        "from time import go;to go export time;",
+        "for i in range(asserto):pass",
+        "def f():if a == b:TODO()",
+        "a+=1;a-=c",
+        "a='assert foo'",
+        "a='assert foo'+'assert bar'",
+        "  a+=1;pass",
+        "i,s=core._generate_mask(i)"
+    ]
 
-    for i, j in zip(a, b):
+    postprocessing.del_asserts(data_in)
+
+    for i, j in zip(data_in, data_out):
         assert i == j
 
 

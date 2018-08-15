@@ -1,4 +1,5 @@
 from typing import List, Tuple
+from bisect import insort, bisect
 import re
 
 
@@ -342,3 +343,31 @@ def _generate_mask(arg: str, s: str=None, as_f_string=True) -> Tuple[List[bool],
 
 
 _generate_mask.LAST_S: str = None
+
+
+def _count_left_spaces(line: str) -> int:
+    """считает количество пробелов в начале строки"""
+    res = 0
+    while res < len(line) and line[res] == ' ':
+        res += 1
+    return res
+
+
+def minimize_left_space(data):
+    """убирает лишние пробелы слева"""
+    space_counts = []  # все варианты количества пробелов слева
+
+    # заполняем space_counts
+    for i in data:
+        c = _count_left_spaces(i)
+
+        if c and c not in space_counts:
+            insort(space_counts, c)  # вставка в отсортированный масссив
+
+    if space_counts:
+        # заменяем количество пробелов в строках на индекс в space_counts + 1
+        for i in range(len(data)):
+            c = _count_left_spaces(data[i])
+
+            if c:
+                data[i] = ' '*bisect(space_counts, c) + data[i][c:]

@@ -181,3 +181,22 @@ def test_generate_mask():
     for i, j in cases:
         _, i = core._generate_mask(i, 'last')
         assert i == j
+
+
+def test_minimize_left_space():
+    data_in = [
+        "hello!",
+        "   my name is Andrey!",
+        "     I am a student of electrotechnical University!",
+        " this is a simple test..."
+    ]
+
+    data_out = [
+        "hello!",
+        "  my name is Andrey!",
+        "   I am a student of electrotechnical University!",
+        " this is a simple test..."
+    ]
+
+    core.minimize_left_space(data_in)
+    assert data_in == data_out

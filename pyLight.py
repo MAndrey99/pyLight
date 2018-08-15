@@ -17,10 +17,10 @@ HEAD = r"""
 |_|    |___/          |___/"""
 
 VERSION = r"""
-     _   __
-__ _/ | /  \
-\ V / || () |
- \_/|_(_)__/
+     _   _
+__ _/ | / |
+\ V / |_| |
+ \_/|_(_)_|
 """
 
 HELP = """
@@ -47,6 +47,9 @@ def process(data: str) -> str:
 
     # многострочные строки в одну линию
     core.update_multiline_strings(data)
+
+    # уменьшаем число отступов где это возможно
+    core.minimize_left_space(data)
 
     # соеденяем строки если это возможно
     core.optimize_str_count(data)
@@ -126,8 +129,8 @@ def menu():
     print("переименовывание локальных переменных(2) -", rename_locals)
     print("создание новой директории для результата(3) -", not no_new_dir)
 
-    print()
-    print("Введите путь до нужного файла/папки или номер настройки, которую хотите изменить.")
+    print("\nВведите путь до нужного файла/папки или номер настройки, которую хотите изменить.\n"
+          "'exit' - завершение программы.")
 
     # обработка ввода
     while True:
@@ -143,6 +146,9 @@ def menu():
 
             system('cls' if platform == 'win32' else 'clear')
             menu()
+            return
+
+        if text == 'exit':
             return
 
         target = Path(text)
