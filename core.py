@@ -289,7 +289,7 @@ def _generate_mask(arg: str, s: str=None, as_f_string=True) -> Tuple[List[bool],
                                     ss = 0
                             else:
                                 if arg[i + 1] == arg[i + 2] == arg[i]:
-                                    ss = arg[i] * 3
+                                    ss = 3
                                     i += 2
                                 else:
                                     ss = 1
