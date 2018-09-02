@@ -178,7 +178,9 @@ def delete_annotations(data: List[str]):
                         # ищем знак равно так чтобы не среагировать на операторы <=, !=, == и тд., а так же на строки
                         for j in range(colon_pos, len(mask)):
                             if not mask[j]:
-                                if it.value[j] == '=' and it.value[j + 1] not in '<>!=' and it.value[j - 1] not in '<>!=':
+                                if it.value[j] == '='\
+                                        and it.value[j + 1] not in '<>!='\
+                                        and it.value[j - 1] not in '<>!=':
                                     eq_pos = j
                                     break
 

@@ -2,12 +2,15 @@ import core
 import re
 
 
-# превращает строку из 0 и 1 в булевский массив
 def to_bool_array(string: str):
+    """превращает строку из 0 и 1 в булевский массив"""
+
     # заменяем выражения в скобках
     while True:
         i = re.search(r'\((?P<value>\d+)\*(?P<count>\d+)\)', string)
-        if not i: break
+        if not i:
+            break
+
         string = string[:i.start()] + i.group('value')*int(i.group('count')) + string[i.end():]
 
     res = []

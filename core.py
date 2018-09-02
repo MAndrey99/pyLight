@@ -151,7 +151,7 @@ def update_multiline_strings(data: List[str]):
             end = mask.index(False) + 3  # конец закрывающих симвалов
 
             # получаем итоговую строку
-            string = data[i][begin:] + '\n' + '\n'.join([data[i] for i in range(i + 1, j)]) + '\n' + data[j][:end]
+            string = data[i][begin:] + '\n' + '\n'.join(data[i + 1: j]) + '\n' + data[j][:end]
             if 'f' in s:  # f-string
                 string, postfix = unfs(string)
             else:
